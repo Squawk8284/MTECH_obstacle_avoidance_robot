@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 
     robot.setSafetyTimeout(hSerial, 0);
     robot.setSafety(hSerial, 0);
+    // robot.buzzerOff(hSerial);
 
     // Move forward
     if (!robot.forward(hSerial)) {
@@ -46,6 +47,8 @@ int main(int argc, char** argv) {
     } else {
         ROS_INFO("Robot stopped.");
     }
+
+    ros::Duration(2.0).sleep();
 
     if (!robot.backward(hSerial)) {
         ROS_ERROR("Failed to move forward!");
