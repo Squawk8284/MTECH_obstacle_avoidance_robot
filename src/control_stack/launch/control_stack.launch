@@ -1,0 +1,5 @@
+<launch>
+    <!-- Control node for the robot -->
+    <node name="control_node" pkg="control_stack" type="control_stack_node" output="screen" / required=True>
+
+</launch>
