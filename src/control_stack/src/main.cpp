@@ -3,7 +3,6 @@
 #include <ros/ros.h>
 #include "0xRobotcpplib.h"
 
-#define ROBOT_PORT "/dev/ttyRobot" // Run the script for udev beforehand
 #define ROS_NODE "RosRobotNode"
 
 lib0xRobotCpp robot;
