@@ -1,8 +1,12 @@
-#ifndef __ROBOT_DIMENSIONS__
-#define __ROBOT_DIMENSIONS__
+#ifndef __ROBOT_MACROS__
+#define __ROBOT_MACROS__
 
 #define ROBOT_PORT "/dev/ttyRobot" // Run the script for udev beforehand
 #define IMU_PORT "/dev/ttyIMU" // Run the script for udev beforehand
+
+
+#define ROB_COM_HANDLE    RobotInt->comm_handle
+#define IMU_COM_HANDLE    IMUInt->comm_handle
 
 
 // ***********************************************************
@@ -22,4 +26,4 @@
 // ***********************************************************
 
 
-#endif //__ROBOT_DIMENSIONS__
+#endif //__ROBOT_MACROS__

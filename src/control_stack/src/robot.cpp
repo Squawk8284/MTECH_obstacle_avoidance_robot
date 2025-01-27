@@ -64,16 +64,48 @@ robot::robot(ros::NodeHandle nh) : robot_node_handle(nh) // initialising the pro
 
 robot::~robot()
 {
+    /*
+    *   ROBOT DESTRUCTOR
+    */
+    RobotInt->stop(ROB_COM_HANDLE);  // stop robot motors
+    RobotInt->disconnect_comm(ROB_COM_HANDLE); // disconnect robot
+
+    /*
+    *   IMU DESTRUCTOR
+    */
+    IMUInt->disconnect_comm(IMU_COM_HANDLE); // disconnect IMU Port
+
+}
+
+int robot::init()
+{
+    /*
+    *   ROBOT INITIALISATIONS
+    */
+    RobotInt = new lib0xRobotCpp();     //actually assigns the memory for the pointer
+    ROB_COM_HANDLE = RobotInt->connect_comm(robot_serial_port.c_str()); // connect to serial robot port
+    // Stop the motors
+    RobotInt->stop(ROB_COM_HANDLE);
+    // Reset Encoders
+    RobotInt->resetMotorEncoderCount(ROB_COM_HANDLE);
+    
+    /*
+    *   IMU INITIALISATIONS
+    */
+    IMUInt = new lib0xRobotCpp();
+    IMU_COM_HANDLE = IMUInt->connect_comm(imu_serial_port.c_str()); // connect to serial IMU port
+    
 }
 
 bool robot::imu_init(void)
 {
+    IMUInt->imuInit(IMU_COM_HANDLE,gyroXYZ_Zero);
     int16 gyroXYZ[3];
     int32 gyroX = 0, gyroY = 0, gyroZ = 0;
 
     for (int i = 0; i < 64; i++)
     {
-        if (RobotInt->getGyroXYZ(RobotInt->comm_handle, gyroXYZ) != 0)
+        if (IMUInt->getGyroXYZ(IMU_COM_HANDLE, gyroXYZ) != 0)
         {
             gyroX += gyroXYZ[x_imu];
             gyroY += gyroXYZ[y_imu];
@@ -104,7 +136,7 @@ bool robot::get_imu_data(sensor_msgs::Imu *imu_data)
     imu_data->linear_acceleration.y = 0.0;
     imu_data->linear_acceleration.z = 0.0;
 
-    if (RobotInt->getAccelerometerXYZ(RobotInt->comm_handle, accelerometerXYZ) != 0)
+    if (IMUInt->getAccelerometerXYZ(IMU_COM_HANDLE, accelerometerXYZ) != 0)
     {
         // Acceleration (g) = (16 bit Raw data) * 0.004   for +/- 8g range
         accelerometerXYZ_g[x_imu] = (accelerometerXYZ[x_imu] >> 4) * 0.004;
@@ -116,12 +148,12 @@ bool robot::get_imu_data(sensor_msgs::Imu *imu_data)
         imu_data->linear_acceleration.x = accelerometerXYZ_g[z_imu] * 9.80665F;
 
         // tilt compensated orientation requires acceleration data
-        if (RobotInt->getMagnetometerXYZ(RobotInt->comm_handle, magXYZ) != 0)
+        if (IMUInt->getMagnetometerXYZ(IMU_COM_HANDLE, magXYZ) != 0)
         {
             magXYZ_gauss[x_imu] = magXYZ[x_imu] / 1100.0;
             magXYZ_gauss[y_imu] = magXYZ[y_imu] / 1100.0;
             magXYZ_gauss[z_imu] = magXYZ[z_imu] / 980.0;
-            orientation_angle = RobotInt->getTiltHeading(RobotInt->comm_handle, magXYZ_gauss, accelerometerXYZ_g) * M_PI / 180.0;
+            orientation_angle = IMUInt->getTiltHeading(IMU_COM_HANDLE, magXYZ_gauss, accelerometerXYZ_g) * M_PI / 180.0;
             imu_data->orientation = tf::createQuaternionMsgFromYaw(orientation_angle);
         }
         else
@@ -134,7 +166,7 @@ bool robot::get_imu_data(sensor_msgs::Imu *imu_data)
     imu_data->angular_velocity.y = 0.0;
     imu_data->angular_velocity.z = 0.0;
 
-    if (RobotInt->getGyroXYZ(RobotInt->comm_handle, gyroXYZ) != 0)
+    if (IMUInt->getGyroXYZ(IMU_COM_HANDLE, gyroXYZ) != 0)
     {
         imu_data->angular_velocity.x = (gyroXYZ[x_imu] - gyroXYZ_Zero[x_imu]) * 0.00175 * M_PI / 180.0;
         imu_data->angular_velocity.y = (gyroXYZ[y_imu] - gyroXYZ_Zero[y_imu]) * 0.00175 * M_PI / 180.0;
@@ -144,4 +176,10 @@ bool robot::get_imu_data(sensor_msgs::Imu *imu_data)
         return false;
 
     return true;
+}
+
+
+float get_imu_heading(int16 *magValue)
+{
+
 }

@@ -27,6 +27,7 @@ private:
 protected:
     /******* ROBOT INSTANCE *******/
     lib0xRobotCpp *RobotInt;
+    lib0xRobotCpp *IMUInt;
     ros::NodeHandle robot_node_handle;
 
     /******* PORT SETTINGS *******/
