@@ -1,5 +1,10 @@
 #include "robot.h"
 
+/**********************************************
+ *
+ *          INITIALISATION
+ *
+ *********************************************** */
 robot::robot(ros::NodeHandle nh) : robot_node_handle(nh) // initialising the protected mumber robot_node_handle with the nodehandle passed in the constructor
 {
     // Parameter settings
@@ -18,8 +23,11 @@ robot::robot(ros::NodeHandle nh) : robot_node_handle(nh) // initialising the pro
     robot_node_handle.param("counts_per_rev", counts_per_rev, static_cast<int>(COUNTS_PER_REVOLUTION));
     ROS_INFO("RobotNode:: Counts per revolution as = %f", counts_per_rev);
 
+    // Odom Setting
+    pose_pub = robot_node_handle.advertise<nav_msgs::Odometry>("odom", 1000);
+
     // IMU Setting
-    imuPub = robot_node_handle.advertise<sensor_msgs::Imu>("robot_imu_handle", 50);
+    imuPub = robot_node_handle.advertise<sensor_msgs::Imu>("imu", 50);
 
     x_imu = 0;
     y_imu = 1;
@@ -60,46 +68,67 @@ robot::robot(ros::NodeHandle nh) : robot_node_handle(nh) // initialising the pro
     // Dimension settings
     distance_per_count = (wheel_diameter * 22.0 / 7.0) / counts_per_rev;
     ROS_INFO("RobotNode:: Ditance per count = %f", distance_per_count);
+
+    // Odom Settings
+    leftCountPrev = 0;
+    rightCountPrev = 0;
+
+    velocity_x = 0;
+    velocity_y = 0;
+    velocity_theta = 0;
+
+    loopCount = 0;
+    updateFrequency = 10;
 }
 
 robot::~robot()
 {
     /*
-    *   ROBOT DESTRUCTOR
-    */
-    RobotInt->stop(ROB_COM_HANDLE);  // stop robot motors
+     *   ROBOT DESTRUCTOR
+     */
+    RobotInt->stop(ROB_COM_HANDLE);            // stop robot motors
     RobotInt->disconnect_comm(ROB_COM_HANDLE); // disconnect robot
 
     /*
-    *   IMU DESTRUCTOR
-    */
+     *   IMU DESTRUCTOR
+     */
     IMUInt->disconnect_comm(IMU_COM_HANDLE); // disconnect IMU Port
-
 }
+
+/**********************************************
+ *
+ *          ROBOT INITIALISATION
+ *
+ *********************************************** */
 
 int robot::init()
 {
     /*
-    *   ROBOT INITIALISATIONS
-    */
-    RobotInt = new lib0xRobotCpp();     //actually assigns the memory for the pointer
+     *   ROBOT INITIALISATIONS
+     */
+    RobotInt = new lib0xRobotCpp();                                     // actually assigns the memory for the pointer
     ROB_COM_HANDLE = RobotInt->connect_comm(robot_serial_port.c_str()); // connect to serial robot port
     // Stop the motors
     RobotInt->stop(ROB_COM_HANDLE);
     // Reset Encoders
     RobotInt->resetMotorEncoderCount(ROB_COM_HANDLE);
-    
+
     /*
-    *   IMU INITIALISATIONS
-    */
+     *   IMU INITIALISATIONS
+     */
     IMUInt = new lib0xRobotCpp();
     IMU_COM_HANDLE = IMUInt->connect_comm(imu_serial_port.c_str()); // connect to serial IMU port
-    
 }
+
+/**********************************************
+ *
+ *          IMU
+ *
+ *********************************************** */
 
 bool robot::imu_init(void)
 {
-    IMUInt->imuInit(IMU_COM_HANDLE,gyroXYZ_Zero);
+    IMUInt->imuInit(IMU_COM_HANDLE, gyroXYZ_Zero);
     int16 gyroXYZ[3];
     int32 gyroX = 0, gyroY = 0, gyroZ = 0;
 
@@ -178,8 +207,23 @@ bool robot::get_imu_data(sensor_msgs::Imu *imu_data)
     return true;
 }
 
-
-float get_imu_heading(int16 *magValue)
+/**********************************************
+ *
+ *          ODOMETRY
+ *
+ *********************************************** */
+void robot::get_position(nav_msgs::Odometry *position)
 {
 
+    // Getting left and right motor count
+    RobotInt->getLeftMotorCount(ROB_COM_HANDLE, &leftMotorCount);
+    RobotInt->getRightMotorCount(ROB_COM_HANDLE, &rightMotorCount);
+
+    // Find the incremental change
+    deltaLeftCount = leftMotorCount - leftCountPrev;
+    deltaRightCount = rightMotorCount - rightMotorCount;
+
+    RobotInt->getDeltaPosition(ROB_COM_HANDLE, deltaLeftCount, deltaRightCount, theta, distance_per_count, axel_length, &deltaX, &deltaY, &deltaUpdate);
+
+    
 }

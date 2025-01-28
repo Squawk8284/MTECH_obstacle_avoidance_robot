@@ -5,9 +5,6 @@
 
 #define ROS_NODE "RosRobotNode"
 
-lib0xRobotCpp robot;
-void *serial_port;
-
 int main(int argc, char **argv)
 {
     /* code */

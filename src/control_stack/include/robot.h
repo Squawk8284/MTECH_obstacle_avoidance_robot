@@ -30,6 +30,10 @@ protected:
     lib0xRobotCpp *IMUInt;
     ros::NodeHandle robot_node_handle;
 
+    uint32 loopCount;
+    uint8 updateFrequency;
+
+
     /******* PORT SETTINGS *******/
     std::string robot_serial_port;
     std::string imu_serial_port;
@@ -51,10 +55,20 @@ protected:
 
     bool imu_init(void);
     bool get_imu_data(sensor_msgs::Imu *imu_data);
-    float get_imu_heading(int16 *magValue);
-    float get_tilt_heading(float *magValue, float *accelValue);
 
 
+    /******* ODOM SETTINGS *******/
+    nav_msgs::Odometry position;
+    ros::Publisher pose_pub;
+
+    int32 leftMotorCount, rightMotorCount, leftCountPrev, rightCountPrev, deltaLeftCount, deltaRightCount;
+    double velocity_x, velocity_y,velocity_theta;
+    double x_vel, y_vel, deltaX, deltaY, deltaUpdate;
+    double theta, deltaTheta, theta_Deg;
+
+    void get_position(nav_msgs::Odometry *position);
+    void setPoseCovariance(nav_msgs::Odometry *position);
+    void setTwistCovariance(nav_msgs::Odometry *position);
 
 
 
