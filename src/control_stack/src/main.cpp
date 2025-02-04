@@ -1,9 +1,19 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "0xRobotcpplib.h"   // Include the robot's library header
+#include <cstdio>
+#include <csignal>
+#include "0xRobotcpplib.h"  // Include the robot's library header
 
 using namespace std;
+
+#define DEVICE_PORT "/dev/ttyRobot"  // Adjust device port as needed
+#define AXEL_LENGTH_IN_MM (200.0) // Length in mm
+#define WHEEL_RADIUS_IN_METRE (0.05) //Radius in metre
+
+#define COUNTS_PER_REV  (3840)
+// distancePerCount = (wheelDiameter*22/7.0)/countsPerRev;
+#define DISTANCE_PER_COUNT_IN_MM (((2*(22/7.0)*WHEEL_RADIUS_IN_METRE)/COUNTS_PER_REV)*1000)
 
 //---------------------------------------------------------
 // Data Structures and Global Variables
@@ -16,7 +26,7 @@ struct Point {
 };
 
 // Global control points for the Bézier curve (example values in mm)
-// Modify these as needed.
+// Modify these control points to suit your desired global path.
 vector<Point> controlPoints = {
     {1000, 1000},   // Starting point (mm)
     {1500, 2500},   // Control point 1 (mm)
@@ -67,11 +77,11 @@ int32 prevRightEncoder = 0;
 // All positions are in millimeters (mm) and angles in radians.
 // Parameters:
 //   robot            - the robot object
-//   comm             - communication handle
+//   hSerial          - communication handle
 //   x, y, theta      - current global position and heading (theta: in radians)
 //   distancePerCount - conversion factor (mm per encoder count)
 //   axleLength       - distance between wheels in mm
-void updateRobotPosition(lib0xRobotCpp &robot, void* comm,
+void updateRobotPosition(lib0xRobotCpp &robot, void* hSerial,
                            double &x, double &y, double &theta,
                            double distancePerCount, double axleLength) 
 {
@@ -79,8 +89,8 @@ void updateRobotPosition(lib0xRobotCpp &robot, void* comm,
     int32 currentRightEncoder = 0;
 
     // Get current encoder counts
-    robot.getLeftMotorCount(comm, &currentLeftEncoder);
-    robot.getRightMotorCount(comm, &currentRightEncoder);
+    robot.getLeftMotorCount(hSerial, &currentLeftEncoder);
+    robot.getRightMotorCount(hSerial, &currentRightEncoder);
 
     // Compute change in encoder counts
     int32 dLeft = currentLeftEncoder - prevLeftEncoder;
@@ -161,15 +171,15 @@ void computeControlSignals(double targetX, double targetY,
 
 // Converts a desired linear velocity (v, m/s) and angular velocity (w, rad/s)
 // into individual left/right wheel speeds and sends the commands to the robot.
-// The conversion uses the differential drive kinematics.
+// The conversion uses differential drive kinematics.
 // Parameters:
 //   robot       - the robot object
-//   comm        - communication handle
+//   hSerial     - communication handle
 //   v           - linear velocity (m/s)
 //   w           - angular velocity (rad/s)
 //   wheelRadius - radius of the wheels in meters
 //   axleLength  - distance between wheels in mm (converted to m inside)
-void setWheelVelocities(lib0xRobotCpp &robot, void* comm,
+void setWheelVelocities(lib0xRobotCpp &robot, void* hSerial,
                         double v, double w,
                         double wheelRadius, double axleLength_mm) 
 {
@@ -181,8 +191,8 @@ void setWheelVelocities(lib0xRobotCpp &robot, void* comm,
     double v_right = v + (w * axleLength / 2.0);
 
     // Send the velocity commands to the robot
-    robot.setLeftMotorVelocity_meterspersec(comm, v_left);
-    robot.setRightMotorVelocity_meterspersec(comm, v_right);
+    robot.setLeftMotorVelocity_meterspersec(hSerial, v_left);
+    robot.setRightMotorVelocity_meterspersec(hSerial, v_right);
 }
 
 //---------------------------------------------------------
@@ -191,11 +201,11 @@ void setWheelVelocities(lib0xRobotCpp &robot, void* comm,
 
 // Makes the robot follow the Bézier curve in the global coordinate system.
 // All measurements (control points, distances) are in millimeters.
-void followBezierCurve(lib0xRobotCpp &robot, void* comm) {
+void followBezierCurve(lib0xRobotCpp &robot, void* hSerial) {
     // --- Hardware Parameters (adjust these for your robot) ---
-    const double distancePerCount = 1.0; // mm per encoder count
-    const double axleLength_mm = 200.0;  // distance between wheels in mm
-    const double wheelRadius_m = 0.05;   // wheel radius in meters
+    const double distancePerCount = DISTANCE_PER_COUNT_IN_MM; // mm per encoder count
+    const double axleLength_mm = AXEL_LENGTH_IN_MM;  // distance between wheels in mm
+    const double wheelRadius_m = WHEEL_RADIUS_IN_METRE;   // wheel radius in meters
 
     // --- Get the starting global position and heading from the user ---
     double globalX, globalY, globalTheta;
@@ -207,8 +217,8 @@ void followBezierCurve(lib0xRobotCpp &robot, void* comm) {
     cin >> globalTheta;
 
     // Initialize previous encoder counts (for dead-reckoning)
-    robot.getLeftMotorCount(comm, &prevLeftEncoder);
-    robot.getRightMotorCount(comm, &prevRightEncoder);
+    robot.getLeftMotorCount(hSerial, &prevLeftEncoder);
+    robot.getRightMotorCount(hSerial, &prevRightEncoder);
 
     // Define the sampling resolution for the Bézier curve parameter t
     const double dt = 0.01;
@@ -219,7 +229,7 @@ void followBezierCurve(lib0xRobotCpp &robot, void* comm) {
         Point target = computeBezierPoint(t, controlPoints);
 
         // Update the robot’s global position using encoder feedback
-        updateRobotPosition(robot, comm, globalX, globalY, globalTheta,
+        updateRobotPosition(robot, hSerial, globalX, globalY, globalTheta,
                             distancePerCount, axleLength_mm);
 
         // Compute the control signals (v in m/s, w in rad/s) based on the current error
@@ -227,7 +237,7 @@ void followBezierCurve(lib0xRobotCpp &robot, void* comm) {
         computeControlSignals(target.x, target.y, globalX, globalY, globalTheta, v, w);
 
         // Command the robot’s wheels with the computed velocities
-        setWheelVelocities(robot, comm, v, w, wheelRadius_m, axleLength_mm);
+        setWheelVelocities(robot, hSerial, v, w, wheelRadius_m, axleLength_mm);
 
         // Debug output for monitoring (optional)
         cout << "t: " << t 
@@ -237,11 +247,11 @@ void followBezierCurve(lib0xRobotCpp &robot, void* comm) {
              << " | v: " << v << " m/s, w: " << w << " rad/s" << endl;
 
         // Allow time for the robot to move (adjust delay as needed)
-        robot.DelaymSec(comm, 100);  // delay 100 milliseconds
+        robot.DelaymSec(hSerial, 100);  // delay 100 milliseconds
     }
 
     // Stop the robot once the end of the curve is reached
-    robot.stop(comm);
+    robot.stop(hSerial);
 }
 
 //---------------------------------------------------------
@@ -249,28 +259,30 @@ void followBezierCurve(lib0xRobotCpp &robot, void* comm) {
 //---------------------------------------------------------
 
 int main() {
-    // Create an instance of the robot library
+    void* hSerial = nullptr;
+
+    // Use the provided startup lines to connect and initialize the robot.
     lib0xRobotCpp robot;
-
-    // Connect to the robot (adjust the port as needed, e.g., "COM3" on Windows or "/dev/ttyRobot" on Linux)
-    void* comm = robot.connect_comm("/dev/ttyRobot");
-    if (comm == nullptr) {
-        cerr << "Error: Could not connect to robot." << endl;
+    hSerial = robot.connect_comm(DEVICE_PORT);
+    if (hSerial == NULL) {
+        printf("Failed to connect to the robot on %s!\n", DEVICE_PORT);
         return -1;
     }
+    printf("Successfully connected to the robot on %s\n", DEVICE_PORT);
 
-    // Initialize robot peripherals
-    if (!robot.initPeripherals(comm)) {
-        cerr << "Error: Could not initialize robot peripherals." << endl;
-        robot.disconnect_comm(comm);
-        return -1;
-    }
+    // Initialize robot settings
+    robot.stop(hSerial);
+    robot.resetMotorEncoderCount(hSerial);
+    robot.setAcceleration(hSerial, 4);
+    robot.setLinearVelocity_meterspersec(hSerial, 0.25);
+    robot.setSafetyTimeout(hSerial, 0);
+    robot.setSafety(hSerial, 0);
 
     // Let the robot follow the Bézier curve using the given starting position and heading.
-    followBezierCurve(robot, comm);
+    followBezierCurve(robot, hSerial);
 
-    // Disconnect from the robot when finished
-    robot.disconnect_comm(comm);
+    // Disconnect from the robot when finished.
+    robot.disconnect_comm(hSerial);
 
     return 0;
 }
