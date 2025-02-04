@@ -227,31 +227,6 @@ class TLBO():
 
         self.optimal_path_x, self.optimal_path_y = self.__generate_path_points(self.optimal_control_points_x, self.optimal_control_points_y)
         
-
-
-# def publish_control_points(control_points):
-#     pub = rospy.Publisher('Control_points', Float32MultiArray, queue_size=10)
-#     rospy.init_node('bezier_publisher', anonymous=True)
-#     rate = rospy.Rate(1)  # 1 Hz publishing rate
-#     while not rospy.is_shutdown():
-
-#         flattened_points = Float32MultiArray()
-        
-#         # Flatten the control points (list of tuples) into a single list of floats
-#         for pt in control_points:
-#             msg = RosPoint()
-#             msg.x = pt[0]
-#             msg.y = pt[1]
-#             msg.z = 0
-#             flattened_points.data.append(msg)
-        
-#         rospy.loginfo("Publishing control points:%s", flattened_points)
-
-#         pub.publish(flattened_points)
-        
-#         rate.sleep()
-        # break
-
 class ControlPointPublisher:
     def __init__(self):
         self.ready_to_publish = False
@@ -259,7 +234,6 @@ class ControlPointPublisher:
         self.sub = rospy.Subscriber('start_signal', Float32, self.start_signal_callback)
 
     def start_signal_callback(self, msg):
-        rospy.loginfo(msg)
         if msg.data == 1:
             rospy.loginfo("Received '1' from subscriber. Ready to publish control points.")
             self.ready_to_publish = True
@@ -271,10 +245,7 @@ class ControlPointPublisher:
         # Wait for subscriber to send '1' before starting the publishing
         rospy.loginfo("Waiting for start signal...")
         while not rospy.is_shutdown() and not self.ready_to_publish:
-            rospy.sleep(0.01)  # Sleep a bit and keep checking
-
-
-        rospy.loginfo("Start signal received. Publishing control points now.")
+            rospy.sleep(1)  # Sleep a bit and keep checking
 
         # Publish the control points when the signal is received
         while not rospy.is_shutdown():
@@ -291,7 +262,7 @@ class ControlPointPublisher:
             
             rospy.loginfo("Publishing control points:%s", flattened_points)
             self.pub.publish(flattened_points)
-            
+            self.ready_to_publish = False
             rate.sleep()
         
         
@@ -299,15 +270,13 @@ def main():
     # Example control points: Replace with your calculated Bezier control points\
     rospy.init_node('bezier_publisher', anonymous=True)    
     
-    bounds = [(0,0), (0,5230), (8390, 5230), (8390, 0)]
+    bounds = [(0,0), (0,5200), (5650,5200), (5650, 0)]
     obstacles = [
-    [(1560, 3380), (1560, 5230), (2170, 5230), (2170, 3380)],
-    [(2530, 3380), (2530, 5230), (3740, 5230), (3740, 3380)],
-    [(4080, 1630), (4080, 5230), (5280, 5230), (5280, 1630)],
-    [(600, 2900), (600, 4600), (1600, 4600), (1600, 2900)]
+    [(870, 4100), (870, 5200), (2830, 5200), (2830, 4100)],
+    [(3180, 4100), (3180, 5200), (4860, 5200), (4860, 4100)]
     ]
-    start = (534,534)
-    end = (7200, 4400)
+    start = (5116,534)
+    end = (534, 4666)
     
     tlbo = TLBO(start=start, end=end, bounds=bounds)
     tlbo.custom_variables(delta_safe=533, penalty_multiplier=6000000)
