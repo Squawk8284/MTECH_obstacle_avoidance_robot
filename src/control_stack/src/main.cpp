@@ -23,7 +23,7 @@ using namespace std;
 #define DISTANCE_PER_TICK_IN_MM  ((M_PI * DEFAULT_WHEEL_DIAMETER_MM) / (DEFAULT_ENCODER_TICKS))
 
 // Controller threshold: if the robot is within this distance of the target, advance to the next target.
-#define DIST_THRESHOLD   (200.0)  // mm
+#define DIST_THRESHOLD   (500.0)  // mm
 
 //---------------------------------------------------------
 // Data Structures
@@ -35,9 +35,9 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {7160, 4170},          // Start
-    {5310.47, 2267.21},    // Control point 1
-    {5337.1, 905.06},   // Control point 2
+    {6930, 4200},         // Start
+    {4080.08, 997.18},    // Control point 1
+    {4202.05, 1074.31},   // Control point 2
     {600, 600}         // End
 };
 

@@ -35,10 +35,10 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {1000, 1000},          // Start
-    {1940.39, 3605.59},    // Control point 1
-    {3689.96, 2825.13},   // Control point 2
-    {4000, 3000}         // End
+    {7160, 4170},          // Start
+    {4551.45, 754.62},    // Control point 1
+    {4140.57, 925.38},   // Control point 2
+    {600, 600}         // End
 };
 
 //---------------------------------------------------------
@@ -217,7 +217,7 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
         // IMPORTANT: Issue a forward command after setting velocities.
         robot.forward(hSerial);
         
-        ros::Duration(0.2).sleep();
+        // ros::Duration(0.2).sleep();
         
         // Check if the robot is near the target.
         double dx = target.x - globalX;
