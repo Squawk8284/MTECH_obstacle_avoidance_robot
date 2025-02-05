@@ -7,30 +7,38 @@
 using namespace std;
 
 //---------------------------------------------------------
-// Macros and Default Constants (for reference)
+// Macros and Constants
 //---------------------------------------------------------
-#define DEVICE_PORT "/dev/ttyRobot"  // Serial port used for robot control
+#define DEVICE_PORT "/dev/ttyRobot"  // Serial port for robot control
 
-// (The following values will be set on the robot via the provided functions.)
-#define DEFAULT_WHEEL_DIAMETER_MM   (260.0)  // mm
-#define DEFAULT_AXLE_LENGTH_MM      (590.0)  // mm
-#define DEFAULT_ENCODER_TICKS       (2000)   // ticks per revolution
+// Default hardware values.
+#define DEFAULT_WHEEL_DIAMETER_MM   (260.0)    // in mm
+#define DEFAULT_AXLE_LENGTH_MM      (590.0)    // in mm
+#define DEFAULT_ENCODER_TICKS       (2000)     // ticks per revolution
+
+// Define wheel radius in meters.
+#define WHEEL_RADIUS_M  (DEFAULT_WHEEL_DIAMETER_MM / 2.0 / 1000.0)
+
+// Distance per encoder tick in mm = (PI * wheel_diameter) / ticks
+#define DISTANCE_PER_TICK_IN_MM  ((M_PI * DEFAULT_WHEEL_DIAMETER_MM) / (DEFAULT_ENCODER_TICKS))
+
+// Controller threshold: if the robot is within this distance of the target, advance to the next target.
+#define DIST_THRESHOLD   (200.0)  // mm
 
 //---------------------------------------------------------
-// Data Structures and Global Variables
+// Data Structures
 //---------------------------------------------------------
-// Simple 2D point (in mm)
 struct Point {
-    double x; // mm
-    double y; // mm
+    double x; // in mm
+    double y; // in mm
 };
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {550, 550},          // Starting point (mm)
-    {986.16, 1587.57},    // Control point 1 (mm)
-    {1551.71, 2933.11},   // Control point 2 (mm)
-    {2000, 4000}         // End point (mm)
+    {7160, 4170},          // Start
+    {5310.47, 2267.21},    // Control point 1
+    {5337.1, 905.06},   // Control point 2
+    {600, 600}         // End
 };
 
 //---------------------------------------------------------
@@ -79,11 +87,11 @@ void updateRobotPosition(lib0xRobotCpp &robot, void* hSerial,
     // Print encoder counts on one line.
     ROS_INFO("Encoders: Left=%d, Right=%d", currentLeftEncoder, currentRightEncoder);
     
-    // Compute differences from previous counts.
+    // Compute difference in encoder counts.
     int32_t dLeft = currentLeftEncoder - prevLeftEncoder;
     int32_t dRight = currentRightEncoder - prevRightEncoder;
     
-    // Update previous counts for next cycle.
+    // Update previous counts.
     prevLeftEncoder = currentLeftEncoder;
     prevRightEncoder = currentRightEncoder;
     
@@ -91,11 +99,11 @@ void updateRobotPosition(lib0xRobotCpp &robot, void* hSerial,
     double dLeft_mm = dLeft * distancePerTick;
     double dRight_mm = dRight * distancePerTick;
     
-    // Compute the average forward displacement and change in orientation.
+    // Compute average displacement and orientation change.
     double dCenter = (dLeft_mm + dRight_mm) / 2.0;
     double dTheta = (dRight_mm - dLeft_mm) / axleLength_mm;
     
-    // Update the robot’s pose.
+    // Update global pose using average heading.
     double thetaMid = theta + dTheta / 2.0;
     x += dCenter * cos(thetaMid);
     y += dCenter * sin(thetaMid);
@@ -124,10 +132,10 @@ void computeControlSignals(double targetX, double targetY,
     while (thetaError > M_PI)  thetaError -= 2 * M_PI;
     while (thetaError < -M_PI) thetaError += 2 * M_PI;
     
-    // Debug message on one line.
+    // Print error in one line.
     ROS_INFO("Error: dist=%.1f mm, thetaError=%.2f rad", distanceError, thetaError);
     
-    // Controller gains (tunable)
+    // Proportional controller gains (tunable)
     const double Kp_v = 0.5;  // m/s per m error
     const double Kp_w = 2.0;  // rad/s per rad error
     
@@ -150,10 +158,10 @@ void computeControlSignals(double targetX, double targetY,
 //---------------------------------------------------------
 void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTick)
 {
-    const double axleLength_mm = AXLE_LENGTH_MM;
-    const double axleLength_m = AXLE_LENGTH_MM / 1000.0;
+    const double axleLength_mm = DEFAULT_AXLE_LENGTH_MM;
+    const double axleLength_m = axleLength_mm / 1000.0;
     
-    // Get starting pose from the user.
+    // Get starting pose from user.
     double globalX, globalY, globalTheta;
     cout << "Enter starting global X position (mm): ";
     cin >> globalX;
@@ -170,44 +178,48 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
     ros::Duration(1.0).sleep();
     
     double t = 0.0;
-    const double t_increment = 0.01;  // Increment when near target
+    const double t_increment = 0.01;  // Increment t when near target
     
     while (t <= 1.0 && ros::ok())
     {
-        // Compute target point on the Bézier curve.
+        // Compute the target point on the Bézier curve.
         Point target = computeBezierPoint(t, controlPoints);
         ROS_INFO("t=%.2f | Target=(%.1f, %.1f) mm", t, target.x, target.y);
         
         // Update current pose from encoders.
         updateRobotPosition(robot, hSerial, globalX, globalY, globalTheta, distancePerTick, axleLength_mm);
         
-        // Compute control signals from current pose and target.
+        // Compute control signals.
         double v, w;
         computeControlSignals(target.x, target.y, globalX, globalY, globalTheta, v, w);
         
-        // Differential drive kinematics:
-        //   v_left = v - (w * L/2)
-        //   v_right = v + (w * L/2)
+        ROS_INFO("Control: v=%.3f m/s, w=%.3f rad/s", v, w);
+        
+        // Convert v and w into individual motor commands using differential drive:
+        //   v_left = v - (w * (L/2))
+        //   v_right = v + (w * (L/2))
         double v_left = v - (w * (axleLength_m / 2.0));
         double v_right = v + (w * (axleLength_m / 2.0));
         
-        // Also compute individual angular velocities (omega = v/r)
-        double omega_left = v_left / (WHEEL_RADIUS_M);
-        double omega_right = v_right / (WHEEL_RADIUS_M);
+        // Compute corresponding angular velocities (omega = v / r).
+        double omega_left = v_left / WHEEL_RADIUS_M;
+        double omega_right = v_right / WHEEL_RADIUS_M;
         
         ROS_INFO("Motor Commands: v_left=%.3f m/s, v_right=%.3f m/s, omega_left=%.3f rad/s, omega_right=%.3f rad/s",
                  v_left, v_right, omega_left, omega_right);
         
-        // Command the robot using the provided functions.
+        // Set the motor velocities using the provided functions.
         if (!robot.setVelocity_meterspersec(hSerial, v_left, v_right))
             ROS_ERROR("Failed to set linear velocities!");
         if (!robot.setVelocity_radianspersec(hSerial, omega_left, omega_right))
             ROS_ERROR("Failed to set angular velocities!");
         
+        // IMPORTANT: Issue a forward command after setting velocities.
         robot.forward(hSerial);
+        
         ros::Duration(0.2).sleep();
         
-        // Check distance to target.
+        // Check if the robot is near the target.
         double dx = target.x - globalX;
         double dy = target.y - globalY;
         double distError = sqrt(dx * dx + dy * dy);
@@ -243,30 +255,31 @@ int main(int argc, char** argv)
     }
     ROS_INFO("Connected to the robot on %s.", DEVICE_PORT);
     
-    // Set wheel diameter and axle length using the provided functions.
+    // Set the motion control mode to closed-loop velocity control (Mode 1).
+    if (!robot.setMode(hSerial, 1)) {
+        ROS_ERROR("Failed to set motion control mode to closed-loop velocity control!");
+        return -1;
+    }
+    else {
+        ROS_INFO("Motion control mode set to closed-loop velocity control (Mode 1).");
+    }
+    
+    // Configure hardware parameters.
     if (!robot.setWheelDiameter_mm(hSerial, DEFAULT_WHEEL_DIAMETER_MM))
         ROS_ERROR("Failed to set wheel diameter!");
     else
         ROS_INFO("Wheel diameter set to %.1f mm", DEFAULT_WHEEL_DIAMETER_MM);
     
     if (!robot.setRobotAxlelength_mm(hSerial, DEFAULT_AXLE_LENGTH_MM))
-        ROS_ERROR("Failed to set robot axle length!");
+        ROS_ERROR("Failed to set axle length!");
     else
-        ROS_INFO("Robot axle length set to %.1f mm", DEFAULT_AXLE_LENGTH_MM);
+        ROS_INFO("Axle length set to %.1f mm", DEFAULT_AXLE_LENGTH_MM);
     
-    // Retrieve encoder resolution (ticks per revolution).
-    uint16_t ticks = 0;
-    if (!robot.getEncoderTicksperRevolution(hSerial, &ticks))
-        ROS_ERROR("Failed to get encoder ticks per revolution!");
-    else {
-        ROS_INFO("Encoder ticks per revolution: %d", ticks);
-    }
-    
-    // Compute distance per encoder tick (in mm) using the set wheel diameter and retrieved ticks.
-    double distancePerTick = (M_PI * DEFAULT_WHEEL_DIAMETER_MM) / ticks;
+    // Compute distance per encoder tick (mm) using the default encoder ticks.
+    double distancePerTick = (M_PI * DEFAULT_WHEEL_DIAMETER_MM) / DEFAULT_ENCODER_TICKS;
     ROS_INFO("Distance per encoder tick: %.4f mm", distancePerTick);
     
-    // Initialize additional robot settings.
+    // Additional robot initialization.
     robot.stop(hSerial);
     robot.resetMotorEncoderCount(hSerial);
     robot.setAcceleration(hSerial, 4);
@@ -274,7 +287,6 @@ int main(int argc, char** argv)
     robot.setSafetyTimeout(hSerial, 0);
     robot.setSafety(hSerial, 0);
     
-    // Follow the Bézier curve using continuous velocity commands.
     followBezierCurve(robot, hSerial, distancePerTick);
     
     if (!robot.disconnect_comm(hSerial))
