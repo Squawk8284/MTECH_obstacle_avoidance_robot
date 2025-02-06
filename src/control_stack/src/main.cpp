@@ -2,6 +2,9 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include "std_msgs/Bool.h"  // For shutdown signal
+#include <nav_msgs/Odometry.h>
+#include <tf/transform_broadcaster.h>
 #include "0xRobotcpplib.h"  // Ensure this header is in your include path
 
 using namespace std;
@@ -139,16 +142,14 @@ void computeControlSignals(double targetX, double targetY,
     const double Kp_v = 0.5;  // m/s per m error
     const double Kp_w = 2.0;  // rad/s per rad error
     
-    // Compute linear velocity v (convert mm error to m error)
-    v = Kp_v * (distanceError / 1000.0);
-    const double max_v = 0.3;  // m/s maximum
-    if (v > max_v) v = max_v;
-    
-    // Compute angular velocity w
-    w = Kp_w * thetaError;
-    const double max_w = 1.0;  // rad/s maximum
-    if (w > max_w)  w = max_w;
-    if (w < -max_w) w = -max_w;
+    // Compute v and w with small angle smoothing
+    double sin_cos_term = 0;
+    if (fabs(thetaError) > 1e-5) {
+        sin_cos_term = sin(thetaError) * cos(thetaError);  // Smooth approximation
+    }
+
+    v = Kp_v * distanceError * cos(thetaError);  // Linear velocity
+    w = Kp_w * thetaError + Kp_v * sin_cos_term;   // Angular velocity
     
     ROS_INFO("Computed: v=%.3f m/s, w=%.3f rad/s", v, w);
 }
@@ -179,6 +180,11 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
     
     double t = 0.0;
     const double t_increment = 0.01;  // Increment t when near target
+
+    // Create a ROS publisher for odometry.
+    ros::NodeHandle nh;
+    ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
+    tf::TransformBroadcaster odom_broadcaster;
     
     while (t <= 1.0 && ros::ok())
     {
@@ -188,6 +194,23 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
         
         // Update current pose from encoders.
         updateRobotPosition(robot, hSerial, globalX, globalY, globalTheta, distancePerTick, axleLength_mm);
+
+        // Publish odometry.
+        nav_msgs::Odometry odom;
+        odom.header.stamp = ros::Time::now();
+        odom.header.frame_id = "odom";
+        odom.child_frame_id = "base_link";
+        // Convert mm to m for publishing.
+        odom.pose.pose.position.x = globalX / 1000.0;
+        odom.pose.pose.position.y = globalY / 1000.0;
+        odom.pose.pose.position.z = 0.0;
+        geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(globalTheta);
+        odom.pose.pose.orientation = odom_quat;
+        // Twist is left zero.
+        odom.twist.twist.linear.x = 0.0;
+        odom.twist.twist.linear.y = 0.0;
+        odom.twist.twist.angular.z = 0.0;
+        odom_pub.publish(odom);
         
         // Compute control signals.
         double v, w;
@@ -243,6 +266,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "control_node");
     ros::NodeHandle nh;
+    ros::Publisher shutdown_pub = nh.advertise<std_msgs::Bool>("/shutdown_signal", 1);
     ROS_INFO("Starting robot movement node...");
     
     lib0xRobotCpp robot;
@@ -294,5 +318,11 @@ int main(int argc, char** argv)
     else
         ROS_INFO("Disconnected from the robot.");
     
+    // Send shutdown signal to Python node
+    std_msgs::Bool shutdown_msg;
+    shutdown_msg.data = true;
+    shutdown_pub.publish(shutdown_msg);
+    ROS_INFO("Shutdown signal sent. Terminating control node.");
+
     return 0;
 }
