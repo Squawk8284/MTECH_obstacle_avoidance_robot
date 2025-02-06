@@ -39,9 +39,9 @@ struct Point {
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
     {600, 600},         // Start
-    {5029.34, 820.98},    // Control point 1
-    {5313.49, 2354.52},   // Control point 2
-    {6930, 4200}         // End
+    {3553.01, 1088.52},    // Control point 1
+    {2936.13, -336.78},   // Control point 2
+    {6900, 4200}         // End
 };
 
 //---------------------------------------------------------
@@ -139,17 +139,19 @@ void computeControlSignals(double targetX, double targetY,
     ROS_INFO("Error: dist=%.1f mm, thetaError=%.2f rad", distanceError, thetaError);
     
     // Proportional controller gains (tunable)
-    const double Kp_v = 0.5;  // m/s per m error
+    const double Kp_v = 1.5;  // m/s per m error
     const double Kp_w = 2.0;  // rad/s per rad error
     
-    // Compute v and w with small angle smoothing
-    double sin_cos_term = 0;
-    if (fabs(thetaError) > 1e-5) {
-        sin_cos_term = sin(thetaError) * cos(thetaError);  // Smooth approximation
-    }
-
-    v = Kp_v * distanceError * cos(thetaError);  // Linear velocity
-    w = Kp_w * thetaError + Kp_v * sin_cos_term;   // Angular velocity
+    // Compute linear velocity v (convert mm error to m error)
+    v = Kp_v * (distanceError / 1000.0);
+    const double max_v = 0.3;  // m/s maximum
+    if (v > max_v) v = max_v;
+    
+    // Compute angular velocity w.
+    w = Kp_w * thetaError;
+    const double max_w = 1.0;  // rad/s maximum
+    if (w > max_w)  w = max_w;
+    if (w < -max_w) w = -max_w;
     
     ROS_INFO("Computed: v=%.3f m/s, w=%.3f rad/s", v, w);
 }

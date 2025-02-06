@@ -89,20 +89,11 @@ def plot_path():
     bound_x, bound_y = zip(*bounds + [bounds[0]])  # Close the shape
     plt.plot(bound_x, bound_y, 'k-', linewidth=2, label="Environment Bounds")
 
-    # Plot safety margin **inside** the bounds (shrinked version)
-    safe_bounds = shrink_polygon(bounds, safety_margin)
-    safe_bound_x, safe_bound_y = zip(*safe_bounds + [safe_bounds[0]])
-    plt.plot(safe_bound_x, safe_bound_y, 'k--', linewidth=1, label="Inner Safety Margin")
-
     # Plot obstacles and their **external** safety margins (expanded version)
     for obs in obstacles:
         obs_x, obs_y = zip(*obs + [obs[0]])  # Close the shape
         plt.fill(obs_x, obs_y, 'r', alpha=0.5, label="Obstacle" if obs == obstacles[0] else "")
 
-        # Safety margin around the obstacle (expanded)
-        safe_obs = expand_polygon(obs, safety_margin)
-        safe_obs_x, safe_obs_y = zip(*safe_obs + [safe_obs[0]])
-        plt.plot(safe_obs_x, safe_obs_y, 'r--', linewidth=1, label="Obstacle Safety Margin" if obs == obstacles[0] else "")
 
     # Plot the robot's path
     plt.plot(path_x, path_y, 'b-', linewidth=2, marker='o', markersize=5, label="Robot Path")
