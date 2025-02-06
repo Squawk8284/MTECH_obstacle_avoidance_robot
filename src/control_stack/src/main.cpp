@@ -35,10 +35,10 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {6930, 4200},         // Start
-    {4080.08, 997.18},    // Control point 1
-    {4202.05, 1074.31},   // Control point 2
-    {600, 600}         // End
+    {600, 600},         // Start
+    {5029.34, 820.98},    // Control point 1
+    {5313.49, 2354.52},   // Control point 2
+    {6930, 4200}         // End
 };
 
 //---------------------------------------------------------
@@ -282,8 +282,8 @@ int main(int argc, char** argv)
     // Additional robot initialization.
     robot.stop(hSerial);
     robot.resetMotorEncoderCount(hSerial);
-    robot.setAcceleration(hSerial, 4);
-    robot.setLinearVelocity_meterspersec(hSerial, 0.250);  // Nominal value; used internally.
+    // robot.setAcceleration(hSerial, 4);
+    // robot.setLinearVelocity_meterspersec(hSerial, 0.250);  // Nominal value; used internally.
     robot.setSafetyTimeout(hSerial, 0);
     robot.setSafety(hSerial, 0);
     
