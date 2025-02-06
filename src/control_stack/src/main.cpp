@@ -28,6 +28,8 @@ using namespace std;
 // Controller threshold: if the robot is within this distance of the target, advance to the next target.
 #define DIST_THRESHOLD   (500.0)  // mm
 
+#define T_INC       (0.04)
+
 //---------------------------------------------------------
 // Data Structures
 //---------------------------------------------------------
@@ -39,9 +41,9 @@ struct Point {
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
     {600, 600},         // Start
-    {3553.01, 1088.52},    // Control point 1
-    {2936.13, -336.78},   // Control point 2
-    {6900, 4200}         // End
+    {2440.64, 845.26},    // Control point 1
+    {3902.44, 42.4},   // Control point 2
+    {6300, 3600}         // End
 };
 
 //---------------------------------------------------------
@@ -144,12 +146,12 @@ void computeControlSignals(double targetX, double targetY,
     
     // Compute linear velocity v (convert mm error to m error)
     v = Kp_v * (distanceError / 1000.0);
-    const double max_v = 0.3;  // m/s maximum
+    const double max_v = 10.0;  // m/s maximum
     if (v > max_v) v = max_v;
     
     // Compute angular velocity w.
     w = Kp_w * thetaError;
-    const double max_w = 1.0;  // rad/s maximum
+    const double max_w = 10.0;  // rad/s maximum
     if (w > max_w)  w = max_w;
     if (w < -max_w) w = -max_w;
     
@@ -181,7 +183,7 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
     ros::Duration(1.0).sleep();
     
     double t = 0.0;
-    const double t_increment = 0.01;  // Increment t when near target
+    const double t_increment = T_INC;  // Increment t when near target
 
     // Create a ROS publisher for odometry.
     ros::NodeHandle nh;
