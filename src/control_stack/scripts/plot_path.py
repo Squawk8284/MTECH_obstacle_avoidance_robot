@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import rospy
 import os
 import matplotlib
@@ -7,21 +6,22 @@ matplotlib.use('Agg')  # No GUI required
 import matplotlib.pyplot as plt
 from nav_msgs.msg import Odometry
 import numpy as np
+from shapely.geometry import Polygon  # Import Shapely for geometric operations
 
 # -------------------------------
 # Parameters and Configurations
 # -------------------------------
 
-# Define environment bounds as list of (x, y) coordinates
+# Define environment bounds as list of (x, y) coordinates (in mm)
 bounds = [(0, 0), (0, 4800), (7500, 4800), (7500, 0)]
 
-# Define obstacles as polygons (list of (x, y) coordinates)
+# Define obstacles as polygons (list of (x, y) coordinates in mm)
 obstacles = [
     [(970, 1510), (970, 3290), (3360, 3290), (3360, 1510)],  # Obstacle 1
     [(4140, 3290), (4140, 4800), (5340, 4800), (5340, 3290)]  # Obstacle 2
 ]
 
-start = [6900,4200]
+start = [6900, 4200]
 end = [600, 600]
 
 # Define safety margin (in mm)
@@ -60,60 +60,73 @@ def check_cpp_node():
     global cpp_node_active
     try:
         cpp_node_active = bool(rospy.get_published_topics())  # If ROS master is running
-    except:
+    except Exception:
         cpp_node_active = False
 
 # -------------------------------
-# Utility Functions for Safety Margins
-# -------------------------------
-
-def shrink_polygon(polygon, margin):
-    """Shrinks a polygon by the given margin (used for inner boundary)."""
-    return [(x + margin if x > 0 else x - margin, 
-             y + margin if y > 0 else y - margin) for x, y in polygon]
-
-def expand_polygon(polygon, margin):
-    """Expands a polygon by the given margin (used for obstacle safety)."""
-    return [(x - margin if x > 0 else x + margin, 
-             y - margin if y > 0 else y + margin) for x, y in polygon]
-
-# -------------------------------
-# Plotting Function
+# Plotting Function Using Shapely
 # -------------------------------
 
 def plot_path():
-    """Plots the robot's path along with bounds, obstacles, and safety margins."""
+    """Plots the robot's path along with the environment bounds (inner boundary)
+       and obstacles (outer boundaries) using Shapely."""
     plt.figure(figsize=(10, 10))
 
-    # Plot environment bounds
-    bound_x, bound_y = zip(*bounds + [bounds[0]])  # Close the shape
-    plt.plot(bound_x, bound_y, 'k-', linewidth=2, label="Environment Bounds")
+    # --- Environment Bounds ---
+    # Create Shapely polygon for the environment bounds.
+    env_polygon = Polygon(bounds)
+    # Compute the inner safe boundary by applying a negative buffer.
+    inner_env_polygon = env_polygon.buffer(-safety_margin)
+    
+    # Plot original environment bounds (closed polygon)
+    x_env, y_env = env_polygon.exterior.xy
+    plt.plot(x_env, y_env, 'k-', linewidth=2, label="Environment Bounds")
+    
+    # Plot inner safe boundary if it exists (it may be empty if margin is too large)
+    if not inner_env_polygon.is_empty:
+        x_inner, y_inner = inner_env_polygon.exterior.xy
+        plt.plot(x_inner, y_inner, 'k--', linewidth=2, label="Inner Environment Boundary")
 
-    # Plot obstacles and their **external** safety margins (expanded version)
-    for obs in obstacles:
-        obs_x, obs_y = zip(*obs + [obs[0]])  # Close the shape
-        plt.fill(obs_x, obs_y, 'r', alpha=0.5, label="Obstacle" if obs == obstacles[0] else "")
+    # --- Obstacles ---
+    for idx, obs in enumerate(obstacles):
+        # Create Shapely polygon for the obstacle.
+        obs_polygon = Polygon(obs)
+        # Compute the outer safety boundary (expanded obstacle) by buffering.
+        outer_obs_polygon = obs_polygon.buffer(safety_margin)
+        
+        # Plot the original obstacle (filled polygon)
+        x_obs, y_obs = obs_polygon.exterior.xy
+        plt.fill(x_obs, y_obs, 'r', alpha=0.5, 
+                 label="Obstacle" if idx == 0 else None)
+        
+        # Plot the expanded (safety) boundary of the obstacle.
+        x_outer, y_outer = outer_obs_polygon.exterior.xy
+        plt.plot(x_outer, y_outer, 'r--', linewidth=2, 
+                 label="Obstacle Safety Boundary" if idx == 0 else None)
 
-
-    # Plot the robot's path
+    # --- Robot Path ---
     plt.plot(path_x, path_y, 'b-', linewidth=2, marker='o', markersize=5, label="Robot Path")
 
-    plt.plot(start[0],start[1], 'g+', linewidth=5, marker='+', markersize=5, label="End")
-    plt.plot(path_x, path_y, 'g+', linewidth=5, marker='+', markersize=5, label="End")
-
-    # Plot start and end points with orientation arrows
+    # Plot the start and end points
     if start_pose:
         plt.scatter(start_pose[0], start_pose[1], c='g', s=100, label="Start Point")
-        plt.arrow(start_pose[0], start_pose[1], np.cos(start_pose[2]) * 200, np.sin(start_pose[2]) * 200, head_width=100, head_length=150, fc='g', ec='g')
-
+        plt.arrow(start_pose[0], start_pose[1],
+                  np.cos(start_pose[2]) * 200, np.sin(start_pose[2]) * 200,
+                  head_width=100, head_length=150, fc='g', ec='g')
     if end_pose:
         plt.scatter(end_pose[0], end_pose[1], c='m', s=100, label="End Point")
-        plt.arrow(end_pose[0], end_pose[1], np.cos(end_pose[2]) * 200, np.sin(end_pose[2]) * 200, head_width=100, head_length=150, fc='m', ec='m')
+        plt.arrow(end_pose[0], end_pose[1],
+                  np.cos(end_pose[2]) * 200, np.sin(end_pose[2]) * 200,
+                  head_width=100, head_length=150, fc='m', ec='m')
 
-    # Set labels and grid
+    # Optionally, also plot the raw start and end positions from the defined lists.
+    plt.plot(start[0], start[1], 'go', markersize=8, label="Defined Start")
+    plt.plot(end[0], end[1], 'mo', markersize=8, label="Defined End")
+
+    # Set labels, title, legend, and grid
     plt.xlabel("X Position (mm)")
     plt.ylabel("Y Position (mm)")
-    plt.title("Robot Path with Obstacles and Safety Margins")
+    plt.title("Robot Path with Shapely-based Safety Boundaries")
     plt.legend()
     plt.grid(True)
 

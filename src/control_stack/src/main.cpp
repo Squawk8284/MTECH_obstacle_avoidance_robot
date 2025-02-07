@@ -26,10 +26,10 @@ using namespace std;
 #define DISTANCE_PER_TICK_IN_MM  ((M_PI * DEFAULT_WHEEL_DIAMETER_MM) / (DEFAULT_ENCODER_TICKS))
 
 // Controller threshold: if the robot is within this distance of the target, advance to the next target.
-#define DIST_THRESHOLD   (50.0)  // mm
+#define DIST_THRESHOLD   (500.0)  // mm
 
 // t_increment for advancing the Bézier parameter t.
-#define T_INC       (0.04)
+#define T_INC       (0.01)
 
 //---------------------------------------------------------
 // Data Structures
@@ -41,10 +41,10 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {6900, 4200},         // Start
-    {3764.62, 566.36},  // Control point 1
-    {4182.76, 822.74},  // Control point 2
-    {600, 600}         // End
+    {600,600},         // Start
+    {5757.69, 306.81},  // Control point 1
+    {6885.99, 4311.8},  // Control point 2
+    {6900, 4200}         // End
 };
 
 //---------------------------------------------------------
@@ -192,7 +192,7 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
     ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
     tf::TransformBroadcaster odom_broadcaster;
     
-    while (t <= 1.0 && ros::ok())
+    while (t <= (1+(5*T_INC)) && ros::ok())
     {
         // Compute the current Bézier point (P1) at parameter t.
         Point P1 = computeBezierPoint(t, controlPoints);
