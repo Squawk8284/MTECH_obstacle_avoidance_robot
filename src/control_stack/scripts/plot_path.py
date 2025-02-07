@@ -21,8 +21,8 @@ obstacles = [
     [(4140, 3290), (4140, 4800), (5340, 4800), (5340, 3290)]  # Obstacle 2
 ]
 
-start = [600,600]
-end = [6900, 4200]
+start = [6900,4200]
+end = [600, 600]
 
 # Define safety margin (in mm)
 safety_margin = 580  # Safe distance from obstacles and boundary

@@ -16,7 +16,7 @@ using namespace std;
 
 // Default hardware values.
 #define DEFAULT_WHEEL_DIAMETER_MM   (260.0)    // in mm
-#define DEFAULT_AXLE_LENGTH_MM      (710.0)    // in mm
+#define DEFAULT_AXLE_LENGTH_MM      (700.0)    // in mm
 #define DEFAULT_ENCODER_TICKS       (2000)     // ticks per revolution
 
 // Define wheel radius in meters.
@@ -26,10 +26,10 @@ using namespace std;
 #define DISTANCE_PER_TICK_IN_MM  ((M_PI * DEFAULT_WHEEL_DIAMETER_MM) / (DEFAULT_ENCODER_TICKS))
 
 // Controller threshold: if the robot is within this distance of the target, advance to the next target.
-#define DIST_THRESHOLD   (500.0)  // mm
+#define DIST_THRESHOLD   (50.0)  // mm
 
 // t_increment for advancing the Bézier parameter t.
-#define T_INC       (0.01)
+#define T_INC       (0.04)
 
 //---------------------------------------------------------
 // Data Structures
@@ -41,10 +41,10 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {600, 600},         // Start
-    {5110.66, 357.85},  // Control point 1
-    {5952.96, 3138.07},  // Control point 2
-    {6900, 4200}         // End
+    {6900, 4200},         // Start
+    {3764.62, 566.36},  // Control point 1
+    {4182.76, 822.74},  // Control point 2
+    {600, 600}         // End
 };
 
 //---------------------------------------------------------
@@ -143,17 +143,17 @@ void computeControlSignals(double targetX, double targetY,
     ROS_INFO("Error: dist=%.1f mm, thetaError=%.2f rad", distanceError, thetaError);
     
     // Proportional controller gains (tunable)
-    const double Kp_v = 1.0;  // m/s per m error
+    const double Kp_v = 0.5;  // m/s per m error
     const double Kp_w = 2.0;  // rad/s per rad error
     
     // Compute linear velocity v (convert mm error to m error)
     v = Kp_v * (distanceError / 1000.0);
-    const double max_v = 100.0;  // m/s maximum
+    const double max_v = 1.0;  // m/s maximum
     if (v > max_v) v = max_v;
     
     // Compute angular velocity w.
     w = Kp_w * thetaError;
-    const double max_w = 100.0;  // rad/s maximum
+    const double max_w = 1.0;  // rad/s maximum
     if (w > max_w)  w = max_w;
     if (w < -max_w) w = -max_w;
     
