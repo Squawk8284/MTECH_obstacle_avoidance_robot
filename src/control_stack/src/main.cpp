@@ -41,10 +41,10 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {600,600},         // Start
-    {5757.69, 306.81},  // Control point 1
-    {6885.99, 4311.8},  // Control point 2
-    {6900, 4200}         // End
+    {6900, 4200},         // Start
+    {4781.32, 2344.04},  // Control point 1
+    {6395.31, 867.09},  // Control point 2
+    {600,600}         // End
 };
 
 //---------------------------------------------------------
@@ -144,7 +144,7 @@ void computeControlSignals(double targetX, double targetY,
     
     // Proportional controller gains (tunable)
     const double Kp_v = 0.5;  // m/s per m error
-    const double Kp_w = 2.0;  // rad/s per rad error
+    const double Kp_w = 2.5;  // rad/s per rad error
     
     // Compute linear velocity v (convert mm error to m error)
     v = Kp_v * (distanceError / 1000.0);
