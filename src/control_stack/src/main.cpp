@@ -2,12 +2,27 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "std_msgs/Bool.h"  // For shutdown signal
+#include "std_msgs/Bool.h"          // For shutdown signal
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
-#include "0xRobotcpplib.h"  // Ensure this header is in your include path
+#include <tf/transform_datatypes.h>
+#include <sensor_msgs/Imu.h>        // For IMU messages
+#include "0xRobotcpplib.h"          // Ensure this header is in your include path
 
 using namespace std;
+
+//---------------------------------------------------------
+// Global Variables for IMU Subscription
+//---------------------------------------------------------
+sensor_msgs::Imu latest_imu;
+bool imu_received = false;
+
+// IMU callback: store the latest message.
+void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
+{
+    latest_imu = *msg;
+    imu_received = true;
+}
 
 //---------------------------------------------------------
 // Macros and Constants
@@ -42,9 +57,9 @@ struct Point {
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
     {6900, 4200},         // Start
-    {4781.32, 2344.04},  // Control point 1
-    {6395.31, 867.09},  // Control point 2
-    {600,600}         // End
+    {4781.32, 2344.04},    // Control point 1
+    {6395.31, 867.09},     // Control point 2
+    {600,600}             // End
 };
 
 //---------------------------------------------------------
@@ -161,7 +176,7 @@ void computeControlSignals(double targetX, double targetY,
 }
 
 //---------------------------------------------------------
-// Main Control Loop: Follow Bézier Curve Using Velocity Commands with Alpha Smoothing
+// Main Control Loop: Follow Bézier Curve Using Velocity Commands with Alpha Smoothing and IMU Fusion
 //---------------------------------------------------------
 void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTick)
 {
@@ -192,7 +207,10 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
     ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
     tf::TransformBroadcaster odom_broadcaster;
     
-    while (t <= (1+(5*T_INC)) && ros::ok())
+    // Complementary filter constant for heading fusion.
+    const double headingAlpha = 0.2; // weight for IMU heading
+    
+    while (t <= (1 + (5 * T_INC)) && ros::ok())
     {
         // Compute the current Bézier point (P1) at parameter t.
         Point P1 = computeBezierPoint(t, controlPoints);
@@ -206,8 +224,6 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
         double distError = sqrt(dx * dx + dy * dy);
         
         // Compute the alpha factor for smoothing.
-        // When the robot is far from P1, alpha will be near 0.
-        // As the robot approaches P1, alpha increases toward 1.
         double alpha = 1.0 - fmin(distError / DIST_THRESHOLD, 1.0);
         
         // Compute the smoothed target by interpolating between P1 and P2.
@@ -220,6 +236,15 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
         
         // Update the robot's current pose from encoder readings.
         updateRobotPosition(robot, hSerial, globalX, globalY, globalTheta, distancePerTick, axleLength_mm);
+        
+        // Fuse IMU heading from the "imu" topic (if received) with the encoder heading.
+        if (imu_received) {
+            double imu_yaw = tf::getYaw(latest_imu.orientation);
+            globalTheta = headingAlpha * imu_yaw + (1 - headingAlpha) * globalTheta;
+            ROS_INFO("IMU yaw: %.2f, Fused Theta: %.2f", imu_yaw, globalTheta);
+        } else {
+            ROS_WARN("No IMU data received yet.");
+        }
         
         // Publish odometry information.
         nav_msgs::Odometry odom;
@@ -283,6 +308,10 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "control_node");
     ros::NodeHandle nh;
+    
+    // Subscribe to the "imu" topic to receive IMU data.
+    ros::Subscriber imu_sub = nh.subscribe("imu", 10, imuCallback);
+    
     ros::Publisher shutdown_pub = nh.advertise<std_msgs::Bool>("/shutdown_signal", 1);
     ROS_INFO("Starting robot movement node...");
     
@@ -315,7 +344,7 @@ int main(int argc, char** argv)
     else
         ROS_INFO("Axle length set to %.1f mm", DEFAULT_AXLE_LENGTH_MM);
     
-    // Compute distance per encoder tick (mm) using the default encoder ticks.
+    // Compute distance per encoder tick (mm).
     double distancePerTick = (M_PI * DEFAULT_WHEEL_DIAMETER_MM) / DEFAULT_ENCODER_TICKS;
     ROS_INFO("Distance per encoder tick: %.4f mm", distancePerTick);
     
@@ -327,7 +356,7 @@ int main(int argc, char** argv)
     robot.setSafetyTimeout(hSerial, 0);
     robot.setSafety(hSerial, 0);
     
-    // Execute the control loop to follow the Bézier curve.
+    // Execute the control loop to follow the Bézier curve with IMU-enhanced odometry.
     followBezierCurve(robot, hSerial, distancePerTick);
     
     if (!robot.disconnect_comm(hSerial))

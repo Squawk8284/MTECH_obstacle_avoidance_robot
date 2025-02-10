@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find control_stack)/launch/control_stack.launch" />
+    <include file="$(find imu)/launch/imu.launch" />
+</launch>
