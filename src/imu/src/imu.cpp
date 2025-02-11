@@ -16,7 +16,7 @@
 class RazorIMU {
 public:
     RazorIMU(ros::NodeHandle& nh) : nh_(nh) {
-        nh_.param<std::string>("port", port_, "/dev/ttyUSB0");
+        nh_.param<std::string>("port", port_, "/dev/ttyIMU");
         nh_.param<std::string>("topic", topic_, "imu");
         nh_.param<std::string>("frame_id", frame_id_, "base_imu_link");
         nh_.param("imu_yaw_calibration", imu_yaw_calibration_, 0.0);
@@ -54,7 +54,7 @@ public:
                 serial_.write("#f\n"); // Request output data string
                 ros::Duration(0.1).sleep();
                 line = serial_.readline(256, "\n");
-                ROS_INFO("Raw IMU Data: %s", line.c_str()); // Debugging raw data
+                // ROS_INFO("Raw IMU Data: %s", line.c_str()); // Debugging raw data
                 if (line.find("#YPRAG=") != std::string::npos) { // Adjusted for correct prefix
                     parseIMUData(line);
                 } else {
@@ -105,6 +105,13 @@ private:
         imu_msg.angular_velocity.x = std::stod(tokens[6]) * GYRO_CONVERSION;
         imu_msg.angular_velocity.y = std::stod(tokens[7]) * GYRO_CONVERSION;
         imu_msg.angular_velocity.z = std::stod(tokens[8]) * GYRO_CONVERSION;
+
+        // Apply covariance values
+        for (int i = 0; i < 9; ++i) {
+            imu_msg.linear_acceleration_covariance[i] = (i % 4 == 0) ? 0.5 : 0.0;
+            imu_msg.angular_velocity_covariance[i] = (i % 4 == 0) ? 0.001 : 0.0;
+            imu_msg.orientation_covariance[i] = (i % 4 == 0) ? 0.1 : 0.0;
+        }
 
         imu_pub_.publish(imu_msg);
     }

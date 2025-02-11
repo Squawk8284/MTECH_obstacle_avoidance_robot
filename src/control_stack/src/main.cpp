@@ -56,10 +56,10 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
-    {6900, 4200},         // Start
-    {4781.32, 2344.04},    // Control point 1
-    {6395.31, 867.09},     // Control point 2
-    {600,600}             // End
+    {600, 600},         // Start
+    {4937.43, 619.92},    // Control point 1
+    {4607.54, 1783.65},     // Control point 2
+    {6900, 4200}             // End
 };
 
 //---------------------------------------------------------
@@ -159,16 +159,16 @@ void computeControlSignals(double targetX, double targetY,
     
     // Proportional controller gains (tunable)
     const double Kp_v = 0.5;  // m/s per m error
-    const double Kp_w = 2.5;  // rad/s per rad error
+    const double Kp_w = 0.5;  // rad/s per rad error
     
     // Compute linear velocity v (convert mm error to m error)
     v = Kp_v * (distanceError / 1000.0);
-    const double max_v = 1.0;  // m/s maximum
+    const double max_v = 0.4;  // m/s maximum
     if (v > max_v) v = max_v;
     
     // Compute angular velocity w.
     w = Kp_w * thetaError;
-    const double max_w = 1.0;  // rad/s maximum
+    const double max_w = 0.4;  // rad/s maximum
     if (w > max_w)  w = max_w;
     if (w < -max_w) w = -max_w;
     
@@ -176,7 +176,8 @@ void computeControlSignals(double targetX, double targetY,
 }
 
 //---------------------------------------------------------
-// Main Control Loop: Follow Bézier Curve Using Velocity Commands with Alpha Smoothing and IMU Fusion
+// Main Control Loop: Follow Bézier Curve Using Velocity Commands
+// with Alpha Smoothing and IMU Fusion (IMU data is read from the "imu" topic)
 //---------------------------------------------------------
 void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTick)
 {
@@ -208,7 +209,7 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
     tf::TransformBroadcaster odom_broadcaster;
     
     // Complementary filter constant for heading fusion.
-    const double headingAlpha = 0.2; // weight for IMU heading
+    const double headingAlpha = 0.2; // Base weight for IMU heading
     
     while (t <= (1 + (5 * T_INC)) && ros::ok())
     {
@@ -239,9 +240,20 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
         
         // Fuse IMU heading from the "imu" topic (if received) with the encoder heading.
         if (imu_received) {
+            imu_received = false;
             double imu_yaw = tf::getYaw(latest_imu.orientation);
-            globalTheta = headingAlpha * imu_yaw + (1 - headingAlpha) * globalTheta;
-            ROS_INFO("IMU yaw: %.2f, Fused Theta: %.2f", imu_yaw, globalTheta);
+            // Use the covariance from the IMU message to adjust the weight.
+            // Here, we assume that orientation_covariance[8] approximates the variance for yaw.
+            double yawCovariance = latest_imu.orientation_covariance[8];
+            double effectiveHeadingAlpha = headingAlpha;
+            if (yawCovariance > 0.0) {
+                effectiveHeadingAlpha = headingAlpha / (1.0 + yawCovariance);
+                if (effectiveHeadingAlpha < 0.05)
+                    effectiveHeadingAlpha = 0.05;
+            }
+            globalTheta = effectiveHeadingAlpha * imu_yaw + (1 - effectiveHeadingAlpha) * globalTheta;
+            ROS_INFO("IMU yaw: %.2f, Covariance: %.3f, Effective Alpha: %.3f, Fused Theta: %.2f",
+                     imu_yaw, yawCovariance, effectiveHeadingAlpha, globalTheta);
         } else {
             ROS_WARN("No IMU data received yet.");
         }
