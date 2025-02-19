@@ -7,18 +7,16 @@ from math import comb
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64, Float64MultiArray
 import tf.transformations as tf_trans
-from geometry_msgs.msg import Twist, Point
-from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Twist
 
 ##############################################################################
-# Global variables for robot state, control points, and actual path storage.
+# Global variables for robot state and control points (NED frame)
 ##############################################################################
-# Our program works in NED coordinates:
+# Our program will work in NED coordinates:
 #   NED: x = North, y = East, z = Down, heading measured clockwise from North.
 robot_state = {'x': None, 'y': None, 'z': None, 'heading': None,
-               'vx': 0.0, 'vy': 0.0}
-control_points = None  # List of (x,y) tuples in NED
-actual_path_points = []  # To store the robot's traveled path
+               'vx': 0.0, 'vy': 0.0}  # Added vx, vy to store measured linear velocities
+control_points = None  # Will be a list of (x,y) tuples in NED
 
 ##############################################################################
 # 1. Bezier Curve Generation (for any number of control points)
@@ -37,60 +35,6 @@ def bezier_curve(control_points, num_samples=20):
             y_t += basis * y
         waypoints.append((x_t, y_t))
     return waypoints
-
-##############################################################################
-# Helper: Publish the planned path as an RViz Marker (LINE_STRIP)
-##############################################################################
-def publish_planned_path_marker(waypoints, marker_pub):
-    marker = Marker()
-    marker.header.frame_id = "odom"  # Change if you use a different fixed frame
-    marker.header.stamp = rospy.Time.now()
-    marker.ns = "planned_path"
-    marker.id = 0
-    marker.type = Marker.LINE_STRIP
-    marker.action = Marker.ADD
-    marker.scale.x = 0.05  # Line width
-    # Set the color to green
-    marker.color.a = 1.0
-    marker.color.r = 0.0
-    marker.color.g = 1.0
-    marker.color.b = 0.0
-
-    for wp in waypoints:
-        p = Point()
-        p.x = wp[0]
-        p.y = wp[1]
-        p.z = 0.0  # Assume flat ground
-        marker.points.append(p)
-    
-    marker_pub.publish(marker)
-
-##############################################################################
-# Helper: Publish the actual path traveled by the robot as an RViz Marker
-##############################################################################
-def publish_actual_path_marker(points, marker_pub):
-    marker = Marker()
-    marker.header.frame_id = "odom"
-    marker.header.stamp = rospy.Time.now()
-    marker.ns = "actual_path"
-    marker.id = 1
-    marker.type = Marker.LINE_STRIP
-    marker.action = Marker.ADD
-    marker.scale.x = 0.05  # Line width
-    # Set the color to red
-    marker.color.a = 1.0
-    marker.color.r = 1.0
-    marker.color.g = 0.0
-    marker.color.b = 0.0
-
-    for pt in points:
-        p = Point()
-        p.x = pt[0]
-        p.y = pt[1]
-        p.z = 0.0
-        marker.points.append(p)
-    
-    marker_pub.publish(marker)
 
 ##############################################################################
 # 2. Compute α₁ and α₂ from ordered waypoints
@@ -228,7 +172,7 @@ Low	Close	VeryHigh	High	low	pos
 Low	Close	VeryHigh	VeryHigh	low	pos
 Low	Far	nVeryHigh	Low	low	neg
 Low	Far	nVeryHigh	High	low	neg
-Low	Far	nVeryHigh	VeryHigh	low	pos
+Low	Far	nVeryHigh	VeryHigh	low	neg
 Low	Far	nHigh	Low	medium	neg
 Low	Far	nHigh	High	medium	neg
 Low	Far	nHigh	VeryHigh	medium	neg
@@ -332,6 +276,7 @@ VeryHigh	Far	VeryHigh	Low	low	pos
 VeryHigh	Far	VeryHigh	High	low	pos
 VeryHigh	Far	VeryHigh	VeryHigh	low	pos
 """
+
 rules_list = []
 for line in table_str.strip().splitlines():
     cols = line.split()
@@ -344,29 +289,37 @@ v_ctrl_system = ctrl.ControlSystem(rules_list)
 v_sim = ctrl.ControlSystemSimulation(v_ctrl_system)
 
 ##############################################################################
-# 4. ROS Callbacks: Odometry and Control Points (with ENU to NED conversion)
+# 4. ROS Subscribers for Odometry and Control Points with ENU to NED conversion
 ##############################################################################
 def odom_callback(msg):
-    global robot_state, actual_path_points
-    # Convert ENU (Gazebo) to NED:
+    global robot_state
+    # Gazebo provides ENU coordinates: x (forward), y (left), z (up).
+    # We convert these to NED:
+    #   NED: x = North, y = East, z = Down.
+    #
+    # For a TurtleBot in Gazebo, assume:
+    #   - The x-axis (forward) is aligned with North.
+    #   - The y-axis (left) is opposite to East.
+    #   - The z-axis (up) becomes Down when inverted.
     robot_state['x'] = msg.pose.pose.position.x
     robot_state['y'] = msg.pose.pose.position.y
     robot_state['z'] = msg.pose.pose.position.z    
+    # Convert orientation from quaternion to Euler angles (roll, pitch, yaw)
     orientation_q = msg.pose.pose.orientation
     euler = tf_trans.euler_from_quaternion([orientation_q.x,
                                               orientation_q.y,
                                               orientation_q.z,
                                               orientation_q.w])
+    # euler[2] is the yaw angle (in radians) in the ENU frame.
     robot_state['heading'] = np.degrees(euler[2])
+    
+    # Also store the linear velocity from the odom twist message.
     robot_state['vx'] = msg.twist.twist.linear.x
     robot_state['vy'] = msg.twist.twist.linear.y
 
-    # Append the current position to the actual path list.
-    if robot_state['x'] is not None and robot_state['y'] is not None:
-        actual_path_points.append((robot_state['x'], robot_state['y'], robot_state['z']))
-
 def control_points_callback(msg):
     global control_points
+    # Expect an even number of floats (x,y pairs) in NED coordinates.
     if len(msg.data) >= 2 and len(msg.data) % 2 == 0:
         control_points = []
         for i in range(0, len(msg.data), 2):
@@ -376,22 +329,19 @@ def control_points_callback(msg):
         rospy.logwarn("Received control points message with insufficient or uneven data.")
 
 ##############################################################################
-# 5. Main ROS Node: Fuzzy Control Using Ordered Waypoints & RViz Path Markers
+# 5. Main ROS Node: Fuzzy Control Using Ordered Waypoints (with coordinate conversion)
 ##############################################################################
 def main():
-    global control_points, actual_path_points
+    global control_points
     rospy.init_node('fuzzy_node')
 
-    # Create marker publisher for RViz
-    marker_pub = rospy.Publisher("visualization_marker", Marker, queue_size=1)
-
-    # Load parameters
+    # Load parameters from the parameter server (from YAML)
     num_samples   = rospy.get_param('~num_samples', 20)
     threshold     = rospy.get_param('~threshold', 0.05)
     control_rate  = rospy.get_param('~rate', 1)
     initial_V     = rospy.get_param('~initial_velocity', 0.00001)
 
-    # Subscribers and cmd_vel publisher
+    # Subscribers and publishers
     rospy.Subscriber('/odom', Odometry, odom_callback)
     rospy.Subscriber('/control_points', Float64MultiArray, control_points_callback)
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
@@ -399,35 +349,41 @@ def main():
     rospy.loginfo("Fuzzy controller node started, waiting for odometry and control points...")
     rate = rospy.Rate(control_rate)
 
-    # Use default control points if none received
-    if control_points is None:
-        control_points = [(0.6, 0.6), (4.37, 0.667), (4.49, 1.226), (6.9, 4.2)]
-    
-    # Generate planned Bezier path and publish as marker
+    # For testing: if no external control points are received, use default points (in NED)
+    control_points = [(0.6, 0.6), (4.37, 0.667), (4.49, 1.226), (6.9, 4.2)]
+
+    # Wait for control points to be received (if not already set)
+    while not rospy.is_shutdown() and control_points is None:
+        rospy.loginfo("Waiting for control points on /control_points...")
+        rate.sleep()
+
+    # Generate the Bezier curve waypoints from the received control points (assumed in NED)
     waypoints = bezier_curve(control_points, num_samples=num_samples)
     rospy.loginfo("Generated %d waypoints.", len(waypoints))
-    publish_planned_path_marker(waypoints, marker_pub)
-
     wp_index = 0
     current_V = initial_V
 
     while not rospy.is_shutdown() and wp_index < len(waypoints):
+        # Ensure odometry is available
         if (robot_state['x'] is None or robot_state['y'] is None or 
             robot_state['heading'] is None):
             rate.sleep()
             continue
 
+        # Current target waypoint (in NED)
         target_wp = waypoints[wp_index]
         dx = target_wp[0] - robot_state['x']
         dy = target_wp[1] - robot_state['y']
         dist_to_wp = np.hypot(dx, dy)
 
+        # If the robot is close enough to the current target, move to the next waypoint
         if dist_to_wp < threshold:
             rospy.loginfo("Reached waypoint %d: (%.2f, %.2f)", wp_index, target_wp[0], target_wp[1])
+            rospy.loginfo("Current waypoint %d: (%.2f, %.2f,%.2f)", wp_index, robot_state['x'], robot_state['y'],robot_state['z'])
             wp_index += 1
             continue
 
-        # Fuzzy Controller C
+        # Compute α₁ and α₂ using the ordered waypoints starting at the current index
         alpha1, alpha2 = compute_alpha1_alpha2_ordered(waypoints, wp_index)
         a1 = max(0, min(180, alpha1))
         a2 = max(0, min(180, alpha2))
@@ -436,30 +392,35 @@ def main():
         c_sim.compute()
         c_val = c_sim.output['c']
 
-        # Compute heading error
+        # Compute dR and heading error (dθ) based on the target waypoint (in NED)
+        # Calculate the desired heading (angle from current position to target) in NED:
         angle_to_wp = np.degrees(np.arctan2(dy, dx))
         dtheta_val = (angle_to_wp - robot_state['heading']) % 360
         if dtheta_val > 180:
             dtheta_val -= 360
 
+        # Get the current measured velocity from odometry (using vx, vy from /odom)
         measured_velocity = np.hypot(robot_state.get('vx', 0), robot_state.get('vy', 0))
 
-        # Fuzzy Controller V
+        # Run Controller V: use the measured velocity for Vc input
         v_sim.input['dR'] = dist_to_wp
         v_sim.input['dtheta'] = dtheta_val
         v_sim.input['Vc'] = measured_velocity
         v_sim.input['c_in'] = c_val
         v_sim.compute()
+        # The fuzzy controller now outputs a new velocity command (V) and angular velocity (omega)
         current_V = v_sim.output['V']
         omega_cmd = v_sim.output['omega']
 
+        # Break current_V (scalar) into NED velocity components assuming motion in the direction of the computed heading.
         heading_rad = np.radians(robot_state['heading'])
         vx_ned = current_V * np.cos(heading_rad)
         vy_ned = current_V * np.sin(heading_rad)
 
         twist_msg = Twist()
-        twist_msg.linear.x = current_V / 10000.0
-        twist_msg.linear.y = 0.0#vy_ned / 10000.0
+        # Adjust scaling if needed; here dividing by 100 as in your code example.
+        twist_msg.linear.x = vx_ned/10000.0
+        twist_msg.linear.y = vy_ned/10000.0
         twist_msg.linear.z = 0.0
         twist_msg.angular.x = 0.0
         twist_msg.angular.y = 0.0
@@ -467,9 +428,9 @@ def main():
 
         cmd_vel_pub.publish(twist_msg)
 
-        # Publish actual path marker at each iteration
-        publish_actual_path_marker(actual_path_points, marker_pub)
-
+        # rospy.loginfo("WP %d: dist=%.3f, (x=%.2f, y=%.2f, h=%.2f), Measured V=%.3f, Cmd V=%.3f (Vx=%.2f, Vy=%.2f), ω=%.2f",
+        #               wp_index, dist_to_wp, robot_state['x'], robot_state['y'], robot_state['heading'],
+        #               measured_velocity, current_V, vx_ned, vy_ned, np.radians(omega_cmd))
         rate.sleep()
 
     rospy.loginfo("All waypoints reached or node shutdown.")
