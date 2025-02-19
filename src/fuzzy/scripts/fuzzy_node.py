@@ -458,8 +458,8 @@ def main():
         vy_ned = current_V * np.sin(heading_rad)
 
         twist_msg = Twist()
-        twist_msg.linear.x = current_V / 10000.0
-        twist_msg.linear.y = 0.0#vy_ned / 10000.0
+        twist_msg.linear.x = vx_ned / 10000.0
+        twist_msg.linear.y = vy_ned / 10000.0
         twist_msg.linear.z = 0.0
         twist_msg.angular.x = 0.0
         twist_msg.angular.y = 0.0
@@ -471,7 +471,15 @@ def main():
         publish_actual_path_marker(actual_path_points, marker_pub)
 
         rate.sleep()
-
+        
+    twist_msg = Twist()
+    twist_msg.linear.x = 0.0
+    twist_msg.linear.y = 0.0
+    twist_msg.linear.z = 0.0
+    twist_msg.angular.x = 0.0
+    twist_msg.angular.y = 0.0
+    twist_msg.angular.z = 0.0
+    cmd_vel_pub.publish(twist_msg)
     rospy.loginfo("All waypoints reached or node shutdown.")
 
 if __name__ == '__main__':
