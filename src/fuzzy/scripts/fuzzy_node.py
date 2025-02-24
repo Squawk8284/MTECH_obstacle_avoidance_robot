@@ -386,7 +386,7 @@ def main():
     marker_pub = rospy.Publisher("visualization_marker", Marker, queue_size=1)
 
     # Load parameters
-    num_samples   = rospy.get_param('~num_samples', 20)
+    num_samples   = rospy.get_param('~num_samples', 25)
     threshold     = rospy.get_param('~threshold', 0.05)
     control_rate  = rospy.get_param('~rate', 1)
     initial_V     = rospy.get_param('~initial_velocity', 0.00001)
