@@ -16,7 +16,11 @@ using namespace std;
 
 // Default hardware values.
 #define DEFAULT_WHEEL_DIAMETER_MM   (260.0)    // in mm
+<<<<<<< HEAD
 #define DEFAULT_AXLE_LENGTH_MM      (710.0)    // in mm
+=======
+#define DEFAULT_AXLE_LENGTH_MM      (700.0)    // in mm
+>>>>>>> 77f1b59231d25c1d52240713f15cf5371463d396
 #define DEFAULT_ENCODER_TICKS       (2000)     // ticks per revolution
 
 // Define wheel radius in meters.
@@ -41,10 +45,17 @@ struct Point {
 
 // Bézier curve control points (in mm)
 vector<Point> controlPoints = {
+<<<<<<< HEAD
     {600, 600},         // Start
     {5110.66, 357.85},  // Control point 1
     {5952.96, 3138.07},  // Control point 2
     {6900, 4200}         // End
+=======
+    {6900, 4200},         // Start
+    {4781.32, 2344.04},  // Control point 1
+    {6395.31, 867.09},  // Control point 2
+    {600,600}         // End
+>>>>>>> 77f1b59231d25c1d52240713f15cf5371463d396
 };
 
 //---------------------------------------------------------
@@ -143,12 +154,21 @@ void computeControlSignals(double targetX, double targetY,
     ROS_INFO("Error: dist=%.1f mm, thetaError=%.2f rad", distanceError, thetaError);
     
     // Proportional controller gains (tunable)
+<<<<<<< HEAD
     const double Kp_v = 1.0;  // m/s per m error
     const double Kp_w = 2.0;  // rad/s per rad error
     
     // Compute linear velocity v (convert mm error to m error)
     v = Kp_v * (distanceError / 1000.0);
     const double max_v = 100.0;  // m/s maximum
+=======
+    const double Kp_v = 0.5;  // m/s per m error
+    const double Kp_w = 2.5;  // rad/s per rad error
+    
+    // Compute linear velocity v (convert mm error to m error)
+    v = Kp_v * (distanceError / 1000.0);
+    const double max_v = 1.0;  // m/s maximum
+>>>>>>> 77f1b59231d25c1d52240713f15cf5371463d396
     if (v > max_v) v = max_v;
     
     // Compute angular velocity w.
@@ -186,13 +206,21 @@ void followBezierCurve(lib0xRobotCpp &robot, void* hSerial, double distancePerTi
     
     double t = 0.0;  // Bézier parameter (0 = start, 1 = end)
     const double t_increment = T_INC;  // Increment for advancing t
+<<<<<<< HEAD
+    
+    // Create a ROS publisher for odometry.
+    ros::NodeHandle nh;
+    ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
+    tf::TransformBroadcaster odom_broadcaster;
+=======
+>>>>>>> 77f1b59231d25c1d52240713f15cf5371463d396
     
     // Create a ROS publisher for odometry.
     ros::NodeHandle nh;
     ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
     tf::TransformBroadcaster odom_broadcaster;
     
-    while (t <= 1.0 && ros::ok())
+    while (t <= (1+(5*T_INC)) && ros::ok())
     {
         // Compute the current Bézier point (P1) at parameter t.
         Point P1 = computeBezierPoint(t, controlPoints);

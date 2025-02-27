@@ -1,7 +1,7 @@
 <launch>
-    <!-- Control node for the robot -->
-    <node name="control_node" pkg="control_stack" type="control_stack_node" output="screen"/>
-    
     <!-- Launch the plotting node (Python script) -->
     <node name="plot_path_node" pkg="control_stack" type="plot_path.py" output="screen"/>
+    
+    <!-- Control node for the robot -->
+    <node name="control_node" pkg="control_stack" type="control_stack_node" output="screen"/>
 </launch>
