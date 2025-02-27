@@ -59,3 +59,8 @@ void PoseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
     q.setX(msg->pose.orientation.x);
     
 }
+
+int main()
+{
+    return 0;
+}
