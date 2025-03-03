@@ -55,7 +55,7 @@ private:
         ref_state(2) = atan2(point(1) - state(1), point(0) - state(0));
         
         // If at the final control point and within 0.05m, mark trajectory as complete.
-        if (t_ref >= 1.0 && (state.head<2>() - point).norm() < 0.00005) {
+        if (t_ref >= 1.0 && (state.head<2>() - point).norm() < 0.05) {
             reached_end = true;
         }
     }
