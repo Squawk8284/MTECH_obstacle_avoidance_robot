@@ -21,13 +21,17 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
+  /usr/local/include
 )
+
+## Add qpOASES library directory
+link_directories(/usr/local/lib)
 
 ## Declare executable
 add_executable(gmpc_controller_node src/gmpc_controller.cpp)
 
 ## Link libraries
-target_link_libraries(gmpc_controller_node ${catkin_LIBRARIES} Eigen3::Eigen)
+target_link_libraries(gmpc_controller_node ${catkin_LIBRARIES} Eigen3::Eigen qpOASES)
 
 catkin_install_python(PROGRAMS
   scripts/plot_actual_path.py

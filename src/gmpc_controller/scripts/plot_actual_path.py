@@ -10,6 +10,7 @@ class ActualPathPublisher:
         self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
         self.path = Path()
         self.path.header.frame_id = "map"  # Ensure this matches your TF fixed frame
+        self.path.poses = []  # Clear any existing poses
 
     def odom_callback(self, msg):
         ps = PoseStamped()
