@@ -28,3 +28,8 @@ add_executable(gmpc_controller_node src/gmpc_controller.cpp)
 
 ## Link libraries
 target_link_libraries(gmpc_controller_node ${catkin_LIBRARIES} Eigen3::Eigen)
+
+catkin_install_python(PROGRAMS
+  scripts/plot_actual_path.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

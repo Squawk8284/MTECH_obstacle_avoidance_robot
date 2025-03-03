@@ -21,10 +21,10 @@ private:
     vector<Vector2d> control_points; // Bézier curve control points (in meters)
     Vector3d ref_state;             // Desired state: [x_d, y_d, theta_d]
     Vector2d control;               // [v, w] where v is forward velocity, w is angular velocity
-    double t;                     // Current best parameter along the curve
+    double t;                     // Current parameter along the curve (0 to 1)
     bool reached_end;
     
-    // Odometry callback: updates the current state and computes/publishes control commands
+    // Odometry callback: updates the current state and computes/publishes control commands.
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
         double x = msg->pose.pose.position.x;
         double y = msg->pose.pose.position.y;
@@ -40,29 +40,31 @@ private:
         publishControl();
     }
     
-    // Update the reference state along the Bézier curve using a lookahead based on the closest point.
+    // Update the reference state along the Bézier curve using a lookahead strategy.
     void updateReferenceState() {
         // Find the closest parameter on the curve to the current position.
         double t_closest = findClosestT(state.head<2>());
-        double lookahead = 0.05;  // Lookahead offset in parameter space (adjust as needed)
+        double lookahead = 0.05;  // Lookahead offset in parameter space (tweak as needed)
         double t_ref = min(t_closest + lookahead, 1.0);
-        t = t_ref;  // Update current t
-
+        t = t_ref;  // Update current parameter
+        
+        // Compute the reference point on the Bézier curve.
         Vector2d point = computeBezierPoint(t_ref);
         ref_state(0) = point(0);
         ref_state(1) = point(1);
-        // Desired heading: angle from current position to the reference point.
         ref_state(2) = atan2(point(1) - state(1), point(0) - state(0));
         
-        if (t_ref >= 1.0)
+        // If at the final control point and within 0.05m, mark trajectory as complete.
+        if (t_ref >= 1.0 && (state.head<2>() - point).norm() < 0.05) {
             reached_end = true;
+        }
     }
     
-    // Compute the closest t (in [0,1]) on the Bézier curve to the given 2D position.
+    // Compute the closest t (in [0,1]) on the Bézier curve to the given position.
     double findClosestT(const Vector2d &pos) {
         double best_t = 0.0;
         double min_dist = numeric_limits<double>::max();
-        // Use a fine resolution to search along the curve.
+        // Use a fine resolution search along the curve.
         for (double t_candidate = 0.0; t_candidate <= 1.0; t_candidate += 0.001) {
             Vector2d pt = computeBezierPoint(t_candidate);
             double dist = (pt - pos).norm();
@@ -92,25 +94,25 @@ private:
     }
     
     // Compute control inputs.
-    // Here, the control is computed by first calculating the desired velocity vector in the world frame (from current position to the reference)
-    // and then projecting that onto the robot’s heading (since a differential-drive robot can only command forward velocity).
+    // The linear velocity is computed as the projection of the desired velocity vector
+    // (from current position to the reference) onto the robot’s heading.
     void computeControl() {
-        // Compute position error in world frame
+        // Compute position error in the world frame.
         Vector2d pos_error = ref_state.head<2>() - state.head<2>();
-        // Desired velocity vector (proportional to error)
+        // Desired velocity vector (proportional to error, with a gain of 1).
         Vector2d v_desired = pos_error;
-        // Robot’s heading vector in world frame
+        
+        // Compute robot's heading vector in world frame.
         Vector2d heading(cos(state(2)), sin(state(2)));
-        // Project desired velocity onto heading
+        // Forward velocity is the projection of v_desired onto the heading.
         double v_forward = v_desired.dot(heading);
         
-        // Compute angular error (difference between desired heading and current heading)
+        // Compute angular error (difference between desired heading and current heading).
         double ang_error = ref_state(2) - state(2);
         ang_error = atan2(sin(ang_error), cos(ang_error));  // Normalize to [-pi, pi]
         
-        // Set control inputs
         control(0) = v_forward;
-        control(1) = ang_error;  // Optionally scale this gain if needed.
+        control(1) = ang_error;  // You may add a gain if needed.
     }
     
     // Publish control commands to /cmd_vel.

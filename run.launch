@@ -1,4 +1,4 @@
 <launch>
     <!-- <include file="$(find imu)/launch/imu.launch" /> -->
-    <include file="$(find fuzzy)/launch/fuzzy.launch" />
+    <!-- <include file="$(find fuzzy)/launch/fuzzy.launch" /> -->
 </launch>
