@@ -25,7 +25,7 @@
 // Default hardware values in meters.
 #define DEFAULT_WHEEL_DIAMETER    (0.26)   // 260 mm => 0.26 m
 #define DEFAULT_AXLE_LENGTH       (0.7)    // 700 mm => 0.7 m
-#define DEFAULT_ENCODER_TICKS     (3840)   // ticks per revolution
+#define DEFAULT_ENCODER_TICKS     (2000)   // ticks per revolution
 
 // Compute wheel radius (in meters) and distance per encoder tick (in meters)
 #define WHEEL_RADIUS  (DEFAULT_WHEEL_DIAMETER / 2.0)
