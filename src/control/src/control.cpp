@@ -25,7 +25,7 @@
 // Default hardware values in meters.
 #define DEFAULT_WHEEL_DIAMETER    (0.26)   // 260 mm => 0.26 m
 #define DEFAULT_AXLE_LENGTH       (0.7)    // 700 mm => 0.7 m
-#define DEFAULT_ENCODER_TICKS     (2000)   // ticks per revolution
+#define DEFAULT_ENCODER_TICKS     (2100)   // ticks per revolution
 
 // Compute wheel radius (in meters) and distance per encoder tick (in meters)
 #define WHEEL_RADIUS  (DEFAULT_WHEEL_DIAMETER / 2.0)
@@ -132,15 +132,16 @@ sensor_msgs::Imu parseIMUData(const std::string& data) {
     imu_msg.angular_velocity.y = std::stod(tokens[7]) * GYRO_CONVERSION;
     imu_msg.angular_velocity.z = std::stod(tokens[8]) * GYRO_CONVERSION;
     
-    // Set example covariance values.
+    // Set covariance values for use with robot_localization.
+    // Here we set diagonal elements; adjust as needed.
     for (int i = 0; i < 9; ++i) {
         imu_msg.linear_acceleration_covariance[i] = (i % 4 == 0) ? 0.5 : 0.0;
         imu_msg.angular_velocity_covariance[i]    = (i % 4 == 0) ? 0.001 : 0.0;
         imu_msg.orientation_covariance[i]           = (i % 4 == 0) ? 0.1 : 0.0;
     }
     imu_msg.header.stamp = ros::Time::now();
-    // The raw IMU data is in NED frame (North-East-Down)
-    imu_msg.header.frame_id = "base_imu_link";
+    // Change the frame to "imu_link" for consistency with robot_localization.
+    imu_msg.header.frame_id = "imu_link";
     return imu_msg;
 }
 
@@ -181,8 +182,8 @@ sensor_msgs::Imu convertNEDtoENU(const sensor_msgs::Imu& imu_ned) {
     imu_enu.angular_velocity.y = imu_ned.angular_velocity.x;
     imu_enu.angular_velocity.z = -imu_ned.angular_velocity.z;
     
-    // Update frame id to reflect ENU usage.
-    imu_enu.header.frame_id = "base_imu_link_enu";
+    // Update frame id to reflect use with robot_localization.
+    imu_enu.header.frame_id = "imu_link";
     return imu_enu;
 }
 
@@ -219,8 +220,8 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     
     // Publishers: odometry and IMU data.
-    ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
-    ros::Publisher imu_pub  = nh.advertise<sensor_msgs::Imu>("imu", 50);
+    ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 50);
+    ros::Publisher imu_pub  = nh.advertise<sensor_msgs::Imu>("/imu", 50);
     
     // Subscriber: velocity commands.
     ros::Subscriber cmd_vel_sub = nh.subscribe("cmd_vel", 10, cmdVelCallback);
@@ -259,14 +260,6 @@ int main(int argc, char** argv) {
     g_robot->setSafetyTimeout(g_hSerial, 0);
     g_robot->setSafety(g_hSerial, 0);
     
-    // Set initial odometry pose (input in meters and radians).
-    std::cout << "Enter starting global X position (m): ";
-    std::cin >> globalX;
-    std::cout << "Enter starting global Y position (m): ";
-    std::cin >> globalY;
-    std::cout << "Enter starting heading (radians): ";
-    std::cin >> globalTheta;
-    
     // Get initial encoder values.
     g_robot->getLeftMotorCount(g_hSerial, &prevLeftEncoder);
     g_robot->getRightMotorCount(g_hSerial, &prevRightEncoder);
@@ -296,12 +289,22 @@ int main(int argc, char** argv) {
     ros::Duration(0.1).sleep();
     imu_serial.write("#f\n");   // Request data string
     ros::Duration(0.1).sleep();
+
+    // Set initial odometry pose (input in meters and radians).
+    std::cout << "Enter starting global X position (m): ";
+    std::cin >> globalX;
+    std::cout << "Enter starting global Y position (m): ";
+    std::cin >> globalY;
+    std::cout << "Enter starting heading (radians): ";
+    std::cin >> globalTheta;
     
     tf::TransformBroadcaster odom_broadcaster;
+    // A separate broadcaster for the IMU frame transform (base_link -> imu_link)
+    tf::TransformBroadcaster imu_broadcaster;
     ros::Rate loop_rate(10);
     
     while (ros::ok()) {
-        // --------- IMU Data Processing -----------
+        // --------- IMU Data Processing -----------        
         if (imu_serial.available()) {
             std::string line = imu_serial.readline(256, "\n");
             if (line.find("#YPRAG=") != std::string::npos) {
@@ -313,7 +316,7 @@ int main(int argc, char** argv) {
             }
         }
         
-        // --------- Odometry Update & Publishing -----------
+        // --------- Odometry Update & Publishing -----------        
         updateRobotPosition(*g_robot, g_hSerial, globalX, globalY, globalTheta,
                             distancePerTick, DEFAULT_AXLE_LENGTH);
         
@@ -326,11 +329,25 @@ int main(int argc, char** argv) {
         odom.pose.pose.position.z = 0.0;
         geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(globalTheta);
         odom.pose.pose.orientation = odom_quat;
+        // Populate covariance matrices for pose and twist so that robot_localization can fuse them.
+        // (Here only the x, y, and yaw components are non-zero; adjust values as needed.)
+        for (int i = 0; i < 36; i++) {
+            odom.pose.covariance[i] = 0.0;
+            odom.twist.covariance[i] = 0.0;
+        }
+        odom.pose.covariance[0] = 0.05;   // variance on x
+        odom.pose.covariance[7] = 0.05;   // variance on y
+        odom.pose.covariance[35] = 0.1;   // variance on yaw
+
+        odom.twist.covariance[0] = 0.05;
+        odom.twist.covariance[7] = 0.05;
+        odom.twist.covariance[35] = 0.1;
+        
         // Optionally, publish the last commanded velocities.
         odom.twist.twist = g_lastCmdVel;
         odom_pub.publish(odom);
         
-        // Broadcast the transform over TF.
+        // Broadcast the transform over TF (odom -> base_link).
         geometry_msgs::TransformStamped odom_trans;
         odom_trans.header.stamp = ros::Time::now();
         odom_trans.header.frame_id = "odom";
@@ -340,6 +357,17 @@ int main(int argc, char** argv) {
         odom_trans.transform.translation.z = 0.0;
         odom_trans.transform.rotation = odom_quat;
         odom_broadcaster.sendTransform(odom_trans);
+
+        // Publish a static transform between base_link and imu_link.
+        geometry_msgs::TransformStamped imu_tf;
+        imu_tf.header.stamp = ros::Time::now();
+        imu_tf.header.frame_id = "base_link";
+        imu_tf.child_frame_id = "imu_link";
+        imu_tf.transform.translation.x = 0.0;
+        imu_tf.transform.translation.y = 0.0;
+        imu_tf.transform.translation.z = 0.0;
+        imu_tf.transform.rotation = tf::createQuaternionMsgFromYaw(0);
+        imu_broadcaster.sendTransform(imu_tf);
         
         ros::spinOnce();
         loop_rate.sleep();
