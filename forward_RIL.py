@@ -3,7 +3,8 @@
 import numpy as np
 import rospy
 from nav_msgs.msg import Path
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
+from visualization_msgs.msg import Marker
 import math
 
 def bernstein_poly(i, n, t):
@@ -25,42 +26,47 @@ def bezier_curve(control_points, num_points=100):
 def quaternion_from_yaw(yaw):
     """
     Convert a yaw angle (in radians) into a quaternion (x, y, z, w).
-    This simple conversion assumes a rotation only around the Z axis.
+    Assumes a rotation only around the Z axis.
     """
     qz = math.sin(yaw / 2.0)
     qw = math.cos(yaw / 2.0)
     return (0.0, 0.0, qz, qw)
 
-def publish_path(path_points):
+def publish_path_and_markers(path_points, reverse_path=False):
     """
-    Publish the Bézier curve points to a ROS topic as a Path message.
-    Each PoseStamped is given an orientation based on the tangent of the path.
+    Publish the Bézier curve points as a Path message and
+    publish visualization markers for the start and end points.
     """
     rospy.init_node('bezier_path_publisher', anonymous=True)
     path_pub = rospy.Publisher('/path_topic', Path, queue_size=10)
+    marker_pub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
     rate = rospy.Rate(1)  # 1 Hz
     
+    if reverse_path:
+        path_points = path_points[::-1]
+    
+    # Define start and end points (for markers)
+    start_point = path_points[0]
+    end_point = path_points[-1]
+    
     while not rospy.is_shutdown():
+        # Publish Path message
         path_msg = Path()
         path_msg.header.stamp = rospy.Time.now()
-        path_msg.header.frame_id = "map"
+        path_msg.header.frame_id = "odom"
         
         for i, point in enumerate(path_points):
-            # Approximate the derivative (tangent) of the path at the current point.
+            # Compute derivative for orientation (tangent) estimation
             if i == 0:
-                # Forward difference for the first point
                 dx = path_points[i+1, 0] - point[0]
                 dy = path_points[i+1, 1] - point[1]
             elif i == len(path_points) - 1:
-                # Backward difference for the last point
                 dx = point[0] - path_points[i-1, 0]
                 dy = point[1] - path_points[i-1, 1]
             else:
-                # Central difference for the intermediate points
                 dx = path_points[i+1, 0] - path_points[i-1, 0]
                 dy = path_points[i+1, 1] - path_points[i-1, 1]
             
-            # Compute yaw angle from the derivative
             yaw = math.atan2(dy, dx)
             q = quaternion_from_yaw(yaw)
             
@@ -77,20 +83,71 @@ def publish_path(path_points):
             path_msg.poses.append(pose)
         
         path_pub.publish(path_msg)
+        
+        # Publish start marker
+        start_marker = Marker()
+        start_marker.header.frame_id = "odom"
+        start_marker.header.stamp = rospy.Time.now()
+        start_marker.ns = "path_markers"
+        start_marker.id = 0
+        start_marker.type = Marker.SPHERE
+        start_marker.action = Marker.ADD
+        start_marker.pose.position.x = start_point[0]
+        start_marker.pose.position.y = start_point[1]
+        start_marker.pose.position.z = 0.1  # slightly above ground
+        start_marker.pose.orientation.x = 0.0
+        start_marker.pose.orientation.y = 0.0
+        start_marker.pose.orientation.z = 0.0
+        start_marker.pose.orientation.w = 1.0
+        start_marker.scale.x = 0.3
+        start_marker.scale.y = 0.3
+        start_marker.scale.z = 0.3
+        start_marker.color.a = 1.0
+        start_marker.color.r = 0.0
+        start_marker.color.g = 1.0
+        start_marker.color.b = 0.0
+        
+        marker_pub.publish(start_marker)
+        
+        # Publish end marker
+        end_marker = Marker()
+        end_marker.header.frame_id = "odom"
+        end_marker.header.stamp = rospy.Time.now()
+        end_marker.ns = "path_markers"
+        end_marker.id = 1
+        end_marker.type = Marker.SPHERE
+        end_marker.action = Marker.ADD
+        end_marker.pose.position.x = end_point[0]
+        end_marker.pose.position.y = end_point[1]
+        end_marker.pose.position.z = 0.1
+        end_marker.pose.orientation.x = 0.0
+        end_marker.pose.orientation.y = 0.0
+        end_marker.pose.orientation.z = 0.0
+        end_marker.pose.orientation.w = 1.0
+        end_marker.scale.x = 0.3
+        end_marker.scale.y = 0.3
+        end_marker.scale.z = 0.3
+        end_marker.color.a = 1.0
+        end_marker.color.r = 1.0
+        end_marker.color.g = 0.0
+        end_marker.color.b = 0.0
+        
+        marker_pub.publish(end_marker)
+        
         rate.sleep()
 
 if __name__ == '__main__':
-    # Given control points
+    # Define control points for your Bézier curve.
     control_points = np.array([[0.6, 0.6],
                                [4.37, 0.667],
                                [4.49, 1.226],
                                [6.9, 4.2]])
     
-    # Generate Bézier curve path
+    # Generate Bézier curve path.
     path_points = bezier_curve(control_points, num_points=100)
     
-    # Publish the path to the ROS topic
+    # Set reverse_path True or False depending on desired travel direction.
     try:
-        publish_path(path_points)
+        publish_path_and_markers(path_points, reverse_path=False)
     except rospy.ROSInterruptException:
         pass
