@@ -61,13 +61,9 @@ public:
         // Set MPC parameters (tune as needed)
         T = 10;
         delta_t = 0.1;
-        Q <<    10, 0,  0,
-                0,  10, 0,
-                0,  0,  1;  
-        Qf <<   100, 0,  0,
-                0,  100, 0,
-                0,  0,  10; 
-        Rm = Eigen::Matrix2d::Identity();
+        Q = 10 * Eigen::Matrix3d::Identity();  
+        Qf = 10 * Eigen::Matrix3d::Identity(); 
+        Rm = 3 * Eigen::Matrix2d::Identity();
         u_min << -0.4, -1.0;
         u_max <<  0.4,  1.0;
         
