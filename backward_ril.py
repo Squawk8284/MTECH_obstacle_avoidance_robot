@@ -144,10 +144,10 @@ if __name__ == '__main__':
                                [0.6, 0.6]])
     
     # Generate Bézier curve path.
-    path_points = bezier_curve(control_points, num_points=100)
+    path_points = bezier_curve(control_points, num_points=25)
     
     # Set reverse_path True or False depending on desired travel direction.
     try:
-        publish_path_and_markers(path_points, reverse_path=False)
+        publish_path_and_markers(path_points, reverse_path=True)
     except rospy.ROSInterruptException:
         pass

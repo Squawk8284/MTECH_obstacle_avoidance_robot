@@ -49,7 +49,7 @@ private:
 public:
     GMPCController() : path_available(false) {
         // Initialize subscribers and publisher
-        odom_sub = nh.subscribe("/odom", 10, &GMPCController::odomCallback, this);
+        odom_sub = nh.subscribe("/odometry/filtered", 10, &GMPCController::odomCallback, this);
         path_sub = nh.subscribe("/path_topic", 10, &GMPCController::pathCallback, this);
         cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
         
@@ -61,11 +61,11 @@ public:
         // Set MPC parameters (tune as needed)
         T = 10;
         delta_t = 0.1;
-        Q = 10 * Eigen::Matrix3d::Identity();  
-        Qf = 10 * Eigen::Matrix3d::Identity(); 
-        Rm = 3 * Eigen::Matrix2d::Identity();
-        u_min << -0.4, -1.0;
-        u_max <<  0.4,  1.0;
+        Q = Eigen::Matrix3d::Identity();  
+        Qf = Eigen::Matrix3d::Identity(); 
+        Rm = Eigen::Matrix2d::Identity();
+        u_min << -2.0, -4.0;
+        u_max <<  2.0,  4.0;
         
         // B_const for unicycle at zero orientation: cos0=1, sin0=0.
         B_const << 1.0, 0.0,
