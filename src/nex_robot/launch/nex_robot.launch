@@ -1,0 +1,8 @@
+<!-- launch/nex_robot.launch -->
+<launch>
+  <!-- Load configuration parameters from YAML file -->
+  <rosparam file="$(find nex_robot)/cfg/config.yaml" command="load"/>
+  
+  <!-- Launch the node -->
+  <node name="nex_robot_node" pkg="nex_robot" type="nex_robot_node" output="screen"/>
+</launch>

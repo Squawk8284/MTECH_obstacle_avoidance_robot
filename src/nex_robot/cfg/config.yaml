@@ -1,0 +1,15 @@
+robot:
+  wheel_radius: 0.033       # in meters
+  wheel_base: 0.15          # in meters
+  encoder_resolution: 1024  # counts per revolution
+
+imu:
+  # Any specific IMU parameters can be added here
+
+ports:
+  robot: "/ttyRobot"        # Serial port for the robot (encoders, motor commands)
+  imu: "/ttyIMU"            # Serial port for the IMU
+
+topics:
+  cmd_vel: "/cmd_vel"       # Topic to subscribe for velocity commands
+  odom: "/odom"             # Odometry publishing topic
