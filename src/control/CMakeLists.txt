@@ -157,12 +157,12 @@ file(GLOB SOURCES
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # Add the directory containing the .so file to the library search path
-link_directories(${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib)
+# link_directories(${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+)
 
 # target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib/lib0xRobotCPPLibrary.so)
 
