@@ -164,7 +164,7 @@ link_directories(${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib)
 #   ${catkin_LIBRARIES}
 # )
 
-target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib/lib0xRobotCPPLibrary.so)
+# target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib/lib0xRobotCPPLibrary.so)
 
 #############
 ## Install ##
