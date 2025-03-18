@@ -34,7 +34,6 @@ serial::Serial *createSerial(const std::string &port, uint32_t baud)
     s->setPort(port);
     s->setBaudrate(baud);
 
-    // ✅ Correct timeout setting (2 seconds read & write timeout)
     serial::Timeout timeout = serial::Timeout(2000, 2000, 0, 2000, 2000);
     s->setTimeout(timeout);
 
@@ -110,25 +109,40 @@ bool sendCommand(serial::Serial *s, uint8_t command, const std::vector<uint8_t> 
 {
     if (!s || !s->isOpen())
     {
-        std::cerr << "Serial port not open!" << std::endl;
+        std::cerr << "❌ Serial port not open!" << std::endl;
         return false;
     }
 
+    // Construct packet: 'N' 'E' 'X' + Command + Data
     std::vector<uint8_t> packet = {'N', 'E', 'X', command};
     packet.insert(packet.end(), data.begin(), data.end());
-    packet.push_back(computeChecksum(packet));
 
-    // Print sent command
-    std::cout << "Sent Command: ";
+    // Compute and append checksum
+    uint8_t checksum = computeChecksum(packet);
+    packet.push_back(checksum);
+
+    // Debug: Print the exact sent command in HEX format
+    std::cout << "📤 Sent Command: ";
     for (auto byte : packet)
     {
-        std::cout << std::hex << static_cast<int>(byte) << " ";
+        printf("0x%02X ", byte);  // Proper hex format with leading zeros
     }
     std::cout << std::endl;
 
-    s->write(packet);
+    // Write to serial and ensure all bytes are sent
+    size_t bytes_written = s->write(packet);
+    s->flush();  // Ensure the packet is fully transmitted
+
+    if (bytes_written != packet.size())
+    {
+        std::cerr << "⚠️ Warning: Not all bytes were sent! Expected: " << packet.size()
+                  << ", Sent: " << bytes_written << std::endl;
+        return false;
+    }
+
     return true;
 }
+
 
 /**
  * @brief Receive response from the serial port. expectedBytes should include the checksum.
@@ -230,19 +244,6 @@ bool executeCommand(serial::Serial *s, uint8_t command, const std::vector<uint8_
     }
 
     return true;
-}
-
-/**
- * @brief Conver decimal to Hex  string
- *
- * @param decimal
- * @return std::string
- */
-std::string decimalToHex(unsigned int decimal)
-{
-    std::stringstream ss;
-    ss << std::hex << std::uppercase << decimal;
-    return ss.str();
 }
 
 #endif // __NEX_ROBOT_H__
