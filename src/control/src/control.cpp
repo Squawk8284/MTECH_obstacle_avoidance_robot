@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     }
 
     std::vector<uint8_t> data;
-    if (setRobotMode(robotPort, SAFETY_ON))
+    if (setSafetyTimeout(robotPort, 1))
     {
         std::cout << "Robot Mode Response: ";
         for (auto byte : data)

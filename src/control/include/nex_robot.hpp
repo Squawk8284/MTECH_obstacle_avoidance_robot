@@ -56,7 +56,6 @@ serial::Serial *createSerial(const std::string &port, uint32_t baud)
     return s;
 }
 
-
 /**
  * @brief Close and free a serial object.
  *
@@ -122,16 +121,16 @@ bool sendCommand(serial::Serial *s, uint8_t command, const std::vector<uint8_t> 
     packet.push_back(checksum);
 
     // Debug: Print the exact sent command in HEX format
-    std::cout << "📤 Sent Command: ";
+    std::cout << "Sent Command: ";
     for (auto byte : packet)
     {
-        printf("0x%02X ", byte);  // Proper hex format with leading zeros
+        printf("0x%02X ", byte); // Proper hex format with leading zeros
     }
     std::cout << std::endl;
 
     // Write to serial and ensure all bytes are sent
     size_t bytes_written = s->write(packet);
-    s->flush();  // Ensure the packet is fully transmitted
+    s->flush(); // Ensure the packet is fully transmitted
 
     if (bytes_written != packet.size())
     {
@@ -142,7 +141,6 @@ bool sendCommand(serial::Serial *s, uint8_t command, const std::vector<uint8_t> 
 
     return true;
 }
-
 
 /**
  * @brief Receive response from the serial port. expectedBytes should include the checksum.
@@ -189,6 +187,8 @@ std::vector<uint8_t> receiveResponse(serial::Serial *s, size_t expectedBytes)
  */
 bool executeCommand(serial::Serial *s, uint8_t command, const std::vector<uint8_t> &data, size_t expectedBytes, std::vector<uint8_t> *respOut = nullptr)
 {
+    s->flushInput();
+    
     if (!sendCommand(s, command, data))
         return false;
 
