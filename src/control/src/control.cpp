@@ -12,17 +12,11 @@ int main(int argc, char **argv)
     }
 
     std::vector<uint8_t> data;
-    if (setSafetyTimeout(robotPort, 1))
-    {
-        std::cout << "Robot Mode Response: ";
-        for (auto byte : data)
-            std::cout << std::hex << static_cast<int>(byte) << " ";
-        std::cout << std::endl;
-    }
-    else
-    {
-        std::cerr << "Failed to set Robot Mode!" << std::endl;
-    }
+    int16_t velocity =1;
+    if(setSafetyTimeout(robotPort, 3))
+    if(setLeftMotorVelocity_mps(robotPort, &velocity));
+    if(setRightMotorVelocity_mps(robotPort, &velocity));
+    if(setRobotDirection(robotPort, 1));
 
     clearSerial(robotPort);
     return 0;

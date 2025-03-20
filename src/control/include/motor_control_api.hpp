@@ -26,14 +26,17 @@
 
 /**
  * @brief Set safety timeout (in seconds); expected response length: 3 bytes.
+ * 
+ * If no command is sent to the robot before the timeour it will simply stop its motion.
  *
- * @param s
- * @param timeout
- * @return true
- * @return false
+ * @param s : serial object
+ * @param timeout :int8 (in seconds)
+ * @return true : If succesfully command is set
+ * @return false : If command fails to execute
  */
 bool setSafetyTimeout(serial::Serial *s, uint8_t timeout)
 {
+    std::cout<<"Setting Safety Timeout set to 3s";
     return executeCommand(s, 0x7A, {0x01, timeout}, 3);
 }
 
@@ -283,8 +286,11 @@ bool getLeftMotorVelocity_mmps(serial::Serial *s, int16_t *velocity)
 }
 
 // 3.3.14 Set right motor velocity in m/s (two bytes); expected response length: 3 bytes.
-bool setRightMotorVelocity_mps(serial::Serial *s, uint8_t msb, uint8_t lsb)
+bool setRightMotorVelocity_mps(serial::Serial *s, int16_t *velocity)
 {
+    *velocity = (*velocity) * 1000; // converting m/s to mm/s to satisfy protocol
+    uint8_t msb = static_cast<uint8_t>(*velocity >> 8);
+    uint8_t lsb = static_cast<uint8_t>(*velocity & 0xFF);
     return executeCommand(s, 0x71, {msb, lsb}, 3);
 }
 
