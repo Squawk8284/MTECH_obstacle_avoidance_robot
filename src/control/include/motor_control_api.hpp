@@ -36,7 +36,7 @@
  */
 bool setSafetyTimeout(serial::Serial *s, uint8_t timeout)
 {
-    std::cout<<"Setting Safety Timeout set to 3s";
+    std::cout<<"Setting Safety Timeout set to "<<timeout<<"s";
     return executeCommand(s, 0x7A, {0x01, timeout}, 3);
 }
 
