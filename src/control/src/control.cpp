@@ -12,8 +12,8 @@ int main(int argc, char **argv)
     }
 
     std::vector<uint8_t> data;
-    int16_t velocity =1;
-    if(setSafetyTimeout(robotPort, 3))
+    float velocity =0.3;
+    if(setSafetyTimeout(robotPort, 3.2))
     if(setLeftMotorVelocity_mps(robotPort, &velocity));
     if(setRightMotorVelocity_mps(robotPort, &velocity));
     if(setRobotDirection(robotPort, 1));
