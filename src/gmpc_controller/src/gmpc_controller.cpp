@@ -47,9 +47,9 @@ private:
 public:
     GMPCController() : path_available(false), n_iter(5), tol(1e-3) {
         // Initialize subscribers and publisher
-        odom_sub = nh.subscribe("/delta_velocity_controller/odom", 10, &GMPCController::odomCallback, this);
+        odom_sub = nh.subscribe("/odom", 10, &GMPCController::odomCallback, this);
         path_sub = nh.subscribe("/path_topic", 10, &GMPCController::pathCallback, this);
-        cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("/delta_velocity_controller/cmd_vel", 10);
+        cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
         
         // Initialize state and reference
         state = Eigen::Vector3d::Zero();
