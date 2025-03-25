@@ -60,11 +60,11 @@ bool setSafetyTimeout(serial::Serial *s, float timeout)
 bool getSafetyTimeout(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t data = 0x02;
-    uint8_t buffer[2] = {0}; // 4 bytes expected response -> payload = 2 bytes
-    bool success = executeCommand(s, 0x7A, &data, sizeof(data), 4, buffer, sizeof(buffer));
+    uint8_t buffer = 0; // 4 bytes expected response -> payload = 2 bytes
+    bool success = executeCommand(s, 0x7A, &data, sizeof(data), 4, &buffer, sizeof(buffer));
     if (success && outData)
     {
-        outData->assign(buffer, buffer + sizeof(buffer));
+        outData->assign(sizeof(buffer), buffer);
     }
     return success;
 }

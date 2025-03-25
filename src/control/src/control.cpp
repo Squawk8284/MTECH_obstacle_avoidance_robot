@@ -12,11 +12,16 @@ int main(int argc, char **argv)
     }
 
     std::vector<uint8_t> data;
-    float velocity =0.3;
-    if(setSafetyTimeout(robotPort, 3.2))
-    if(setLeftMotorVelocity_mps(robotPort, &velocity));
-    if(setRightMotorVelocity_mps(robotPort, &velocity));
-    if(setRobotDirection(robotPort, 1));
+    float velocity =0.4;
+    if(!setSafetyTimeout(robotPort, 1));
+    if(!getSafetyTimeout(robotPort, &data));
+    std::cout << "Safety Timeout = ";
+        for (auto byte : data)
+            std::cout << static_cast<int>(byte) << " ";
+        std::cout << std::endl;
+    // if(!setLeftMotorVelocity_mps(robotPort, &velocity));
+    // if(!setRightMotorVelocity_mps(robotPort, &velocity));
+    // if(!setRobotDirection(robotPort, 1));
 
     clearSerial(robotPort);
     return 0;

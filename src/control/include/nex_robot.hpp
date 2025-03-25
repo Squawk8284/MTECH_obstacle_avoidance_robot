@@ -247,7 +247,7 @@ bool executeCommand(serial::Serial *s, uint8_t command, const void *data, size_t
     }
 
     uint8_t receivedChecksum = response.back();
-    size_t withoutChecksumSize = response.size() - 1;
+    // size_t withoutChecksumSize = response.size() - 1;
     // Create a temporary buffer without the checksum
     std::vector<uint8_t> withoutChecksum(response.begin(), response.end() - 1);
     uint8_t computedChecksum = computeChecksum(withoutChecksum.data(), withoutChecksum.size());
@@ -272,7 +272,7 @@ bool executeCommand(serial::Serial *s, uint8_t command, const void *data, size_t
         return false;
     }
 
-    memcpy(respOut, withoutChecksum.data() + 2, outSize);
+    memcpy(respOut, withoutChecksum.data()+expectedBytes+2, outSize);
     return true;
 }
 
