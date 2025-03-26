@@ -25,7 +25,7 @@
 
 // Conditional Debugging
 #ifdef DEBUG
-    #define _DEBUG(x) (x)
+    #define _DEBUG(x) x
 #else
     #define _DEBUG(x)
 #endif
@@ -232,7 +232,7 @@ bool receiveResponse(serial::Serial *s, std::size_t expectedBytes, void *respOut
         return FAILURE;
     }
 
-    memcpy(respOut, withoutChecksum.data()+expectedBytes+2, outSize);
+    std::memcpy(respOut, withoutChecksum.data()+2, outSize);
     return SUCCESS;
 }
 
@@ -260,50 +260,8 @@ bool executeCommand(serial::Serial *s, uint8_t command, const void *data, std::s
     if (!sendCommand(s, command, data, dataSize))
         return FAILURE;
 
-    // Read full response into a temporary vector
-    std::vector<uint8_t> response;
-    std::size_t bytes_read = s->read(response, expectedBytes);
-
-    _DEBUG(std::cout << "Raw Response (HEX): ";
-    for (auto byte : response)
-    {
-        printf("0x%02X ", byte);
-    }
-    std::cout << std::endl;)
-
-    if (response.empty() || response.size() < 3) // Minimum: header + command + checksum
-    {
-        std::cerr << "❌ No valid response received." << std::endl;
+    if(!receiveResponse(s,expectedBytes,respOut,outSize))
         return FAILURE;
-    }
-
-    uint8_t receivedChecksum = response.back();
-    // size_t withoutChecksumSize = response.size() - 1;
-    // Create a temporary buffer without the checksum
-    std::vector<uint8_t> withoutChecksum(response.begin(), response.end() - 1);
-    uint8_t computedChecksum = computeChecksum(withoutChecksum.data(), withoutChecksum.size());
-    if (receivedChecksum != computedChecksum)
-    {
-        std::cerr << "❌ Checksum mismatch! Received: 0x" << std::hex << static_cast<int>(receivedChecksum)
-                  << ", Computed: 0x" << static_cast<int>(computedChecksum) << std::endl;
-        return FAILURE;
-    }
-
-    // Skip header + command (assume first 2 bytes) to get the payload.
-    if (withoutChecksum.size() < 2)
-    {
-        std::cerr << "❌ Response too short." << std::endl;
-        return FAILURE;
-    }
-    std::size_t available = withoutChecksum.size() - 2;
-    if (outSize > available)
-    {
-        std::cerr << "❌ Requested output size (" << outSize << ") is larger than available payload ("
-                  << available << ")." << std::endl;
-        return FAILURE;
-    }
-
-    memcpy(respOut, withoutChecksum.data()+expectedBytes+2, outSize);
     return SUCCESS;
 }
 
