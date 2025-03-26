@@ -23,6 +23,17 @@
 #include <cstdio>          // For printf
 #include <sstream>         // For stringstream
 
+// Conditional Debugging
+#ifdef DEBUG
+    #define _DEBUG(x) (x)
+#else
+    #define _DEBUG(x)
+#endif
+
+#define SUCCESS     (true)
+#define FAILURE     (false)
+
+
 // =======================
 // Serial Device Management
 // =======================
@@ -95,11 +106,11 @@ void clearSerial(serial::Serial *s)
  * @param length Number of bytes to process.
  * @return uint8_t Computed checksum.
  */
-uint8_t computeChecksum(const void *data, size_t length)
+uint8_t computeChecksum(const void *data, std::size_t length)
 {
     uint16_t sum = 0;
     const uint8_t *bytes = static_cast<const uint8_t *>(data);
-    for (size_t i = 0; i < length; i++)
+    for (std::size_t i = 0; i < length; i++)
     {
         sum += bytes[i];
     }
@@ -117,12 +128,12 @@ uint8_t computeChecksum(const void *data, size_t length)
  * @param dataSize Number of bytes in the data buffer.
  * @return true if the command is sent successfully; false otherwise.
  */
-bool sendCommand(serial::Serial *s, uint8_t command, const void *data, size_t dataSize)
+bool sendCommand(serial::Serial *s, uint8_t command, const void *data, std::size_t dataSize)
 {
     if (!s || !s->isOpen())
     {
         std::cerr << "❌ Serial port not open!" << std::endl;
-        return false;
+        return FAILURE;
     }
 
     // Construct packet: header ('N','E','X'), command, then data (if any)
@@ -141,24 +152,24 @@ bool sendCommand(serial::Serial *s, uint8_t command, const void *data, size_t da
     uint8_t checksum = computeChecksum(packet.data(), packet.size());
     packet.push_back(checksum);
 
-    // Debug: Print the sent command in HEX format
+    _DEBUG(// Debug: Print the sent command in HEX format
     std::cout << "Sent Command (HEX): ";
     for (auto byte : packet)
     {
         printf("0x%02X ", byte);
     }
-    std::cout << std::endl;
+    std::cout << std::endl;)
 
     // Write to serial and ensure all bytes are sent
     s->flushInput(); // Clear any leftover data
-    size_t bytes_written = s->write(packet);
+    std::size_t bytes_written = s->write(packet);
     if (bytes_written != packet.size())
     {
         std::cerr << "⚠️ Warning: Not all bytes were sent! Expected: " << packet.size()
                   << ", Sent: " << bytes_written << std::endl;
-        return false;
+        return FAILURE;
     }
-    return true;
+    return SUCCESS;
 }
 
 /**
@@ -171,38 +182,58 @@ bool sendCommand(serial::Serial *s, uint8_t command, const void *data, size_t da
  * @param outSize Size (in bytes) of the output buffer.
  * @return true if the response is received successfully; false otherwise.
  */
-bool receiveResponse(serial::Serial *s, size_t expectedBytes, void *respOut, size_t outSize)
+bool receiveResponse(serial::Serial *s, std::size_t expectedBytes, void *respOut, std::size_t outSize)
 {
     if (!s || !s->isOpen())
     {
         std::cerr << "❌ Serial port not open!" << std::endl;
-        return false;
+        return FAILURE;
     }
 
-    std::vector<uint8_t> response(expectedBytes);
-    size_t bytes_read = s->read(response, expectedBytes);
+    std::vector<uint8_t> response;
+    std::size_t bytes_read = s->read(response, expectedBytes);
 
-    std::cout << "Raw Response (HEX): ";
+    _DEBUG(std::cout << "Raw Response (HEX): ";
     for (auto byte : response)
     {
         printf("0x%02X ", byte);
     }
-    std::cout << std::endl;
+    std::cout << std::endl;)
 
-    if (bytes_read != expectedBytes)
+    if (response.empty() || response.size() < 3) // Minimum: header + command + checksum
     {
-        std::cerr << "❌ Incomplete response. Expected: " << expectedBytes << ", Received: " << bytes_read << std::endl;
-        return false;
+        std::cerr << "❌ No valid response received." << std::endl;
+        return FAILURE;
     }
 
-    if (outSize > response.size())
+    uint8_t receivedChecksum = response.back();
+    // size_t withoutChecksumSize = response.size() - 1;
+    // Create a temporary buffer without the checksum
+    std::vector<uint8_t> withoutChecksum(response.begin(), response.end() - 1);
+    uint8_t computedChecksum = computeChecksum(withoutChecksum.data(), withoutChecksum.size());
+    if (receivedChecksum != computedChecksum)
     {
-        std::cerr << "❌ Output buffer size is larger than response size." << std::endl;
-        return false;
+        std::cerr << "❌ Checksum mismatch! Received: 0x" << std::hex << static_cast<int>(receivedChecksum)
+                  << ", Computed: 0x" << static_cast<int>(computedChecksum) << std::endl;
+        return FAILURE;
     }
 
-    memcpy(respOut, response.data(), outSize);
-    return true;
+    // Skip header + command (assume first 2 bytes) to get the payload.
+    if (withoutChecksum.size() < 2)
+    {
+        std::cerr << "❌ Response too short." << std::endl;
+        return FAILURE;
+    }
+    std::size_t available = withoutChecksum.size() - 2;
+    if (outSize > available)
+    {
+        std::cerr << "❌ Requested output size (" << outSize << ") is larger than available payload ("
+                  << available << ")." << std::endl;
+        return FAILURE;
+    }
+
+    memcpy(respOut, withoutChecksum.data()+expectedBytes+2, outSize);
+    return SUCCESS;
 }
 
 /**
@@ -223,27 +254,27 @@ bool receiveResponse(serial::Serial *s, size_t expectedBytes, void *respOut, siz
  *                (Here, we assume the first two bytes of the response are header+command.)\n"
  * @return true if successful; false otherwise.
  */
-bool executeCommand(serial::Serial *s, uint8_t command, const void *data, size_t dataSize,
-                    size_t expectedBytes, void *respOut, size_t outSize)
+bool executeCommand(serial::Serial *s, uint8_t command, const void *data, std::size_t dataSize,
+                    std::size_t expectedBytes, void *respOut, std::size_t outSize)
 {
     if (!sendCommand(s, command, data, dataSize))
-        return false;
+        return FAILURE;
 
     // Read full response into a temporary vector
-    std::vector<uint8_t> response(expectedBytes);
-    size_t bytes_read = s->read(response, expectedBytes);
+    std::vector<uint8_t> response;
+    std::size_t bytes_read = s->read(response, expectedBytes);
 
-    std::cout << "Raw Response (HEX): ";
+    _DEBUG(std::cout << "Raw Response (HEX): ";
     for (auto byte : response)
     {
         printf("0x%02X ", byte);
     }
-    std::cout << std::endl;
+    std::cout << std::endl;)
 
     if (response.empty() || response.size() < 3) // Minimum: header + command + checksum
     {
         std::cerr << "❌ No valid response received." << std::endl;
-        return false;
+        return FAILURE;
     }
 
     uint8_t receivedChecksum = response.back();
@@ -255,25 +286,25 @@ bool executeCommand(serial::Serial *s, uint8_t command, const void *data, size_t
     {
         std::cerr << "❌ Checksum mismatch! Received: 0x" << std::hex << static_cast<int>(receivedChecksum)
                   << ", Computed: 0x" << static_cast<int>(computedChecksum) << std::endl;
-        return false;
+        return FAILURE;
     }
 
     // Skip header + command (assume first 2 bytes) to get the payload.
     if (withoutChecksum.size() < 2)
     {
         std::cerr << "❌ Response too short." << std::endl;
-        return false;
+        return FAILURE;
     }
-    size_t available = withoutChecksum.size() - 2;
+    std::size_t available = withoutChecksum.size() - 2;
     if (outSize > available)
     {
         std::cerr << "❌ Requested output size (" << outSize << ") is larger than available payload ("
                   << available << ")." << std::endl;
-        return false;
+        return FAILURE;
     }
 
     memcpy(respOut, withoutChecksum.data()+expectedBytes+2, outSize);
-    return true;
+    return SUCCESS;
 }
 
 /**

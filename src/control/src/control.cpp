@@ -2,6 +2,8 @@
 #include <nex_robot.hpp>
 #include <motor_control_api.hpp>
 
+// #define DEBUG   //Uncomment to enable debugging
+
 int main(int argc, char **argv)
 {
     serial::Serial *robotPort = createSerial("/dev/ttyRobot", 57600);
