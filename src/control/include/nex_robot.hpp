@@ -1,8 +1,8 @@
 /**
  * @file nex_robot.hpp
  * @author Kartik Sahasrabudhe
- * @brief Header file for NEX robot serial communication
- * @version 0.3
+ * @brief Header file for NEX robot serial communication with vector-based command support
+ * @version 0.5
  * @date 2025-03-20
  *
  * @copyright Copyright (c) 2025
@@ -23,16 +23,40 @@
 #include <cstdio>          // For printf
 #include <sstream>         // For stringstream
 
-// Conditional Debugging
+template <typename... Args>
+void print(Args &&...args)
+{
+    using Expander = int[];
+    (void)Expander{0, ((std::cout << args), 0)...};
+}
+
+// ---------------------------------------------------------------------------
+// MACROS
+// ---------------------------------------------------------------------------
+#define Print(...)          \
+    do                      \
+    {                       \
+        print(__VA_ARGS__); \
+    } while (0)
+#define PrintLn(...)            \
+    do                          \
+    {                           \
+        print(__VA_ARGS__);     \
+        std::cout << std::endl; \
+    } while (0)
+
+#define CMD(name, cmd, ...) \
+    std::vector<uint8_t> { cmd, ##__VA_ARGS__ }
+#define ReturnPayload(payload) (payload + 3)
+
 #ifdef DEBUG
-    #define _DEBUG(x) x
+#define _DEBUG(x) x
 #else
-    #define _DEBUG(x)
+#define _DEBUG(x)
 #endif
 
-#define SUCCESS     (true)
-#define FAILURE     (false)
-
+#define SUCCESS (true)
+#define FAILURE (false)
 
 // =======================
 // Serial Device Management
@@ -73,7 +97,6 @@ serial::Serial *createSerial(const std::string &port, uint32_t baud)
         delete s;
         return nullptr;
     }
-
     return s;
 }
 
@@ -120,15 +143,18 @@ uint8_t computeChecksum(const void *data, std::size_t length)
 }
 
 /**
- * @brief Send a command using the protocol: header ('N', 'E', 'X') + command + data, then append checksum.
+ * @brief Construct and send a packet that includes a vector of command bytes and optional data.
+ *
+ * The packet structure is:
+ * Header ("N", "E", "X") + command bytes (vector) + [Optional Data] + Checksum
  *
  * @param s Pointer to the serial object.
- * @param command Command byte.
- * @param data Pointer to a buffer containing optional data (pass nullptr if none).
- * @param dataSize Number of bytes in the data buffer.
- * @return true if the command is sent successfully; false otherwise.
+ * @param commands Vector of command bytes (this can include subcommands if needed).
+ * @param data Pointer to additional data bytes (can be nullptr).
+ * @param dataSize Number of additional data bytes.
+ * @return true if the packet is sent successfully; false otherwise.
  */
-bool sendCommand(serial::Serial *s, uint8_t command, const void *data, std::size_t dataSize)
+bool sendPacket(serial::Serial *s, const std::vector<uint8_t> &commands, const void *data, std::size_t dataSize)
 {
     if (!s || !s->isOpen())
     {
@@ -136,32 +162,37 @@ bool sendCommand(serial::Serial *s, uint8_t command, const void *data, std::size
         return FAILURE;
     }
 
-    // Construct packet: header ('N','E','X'), command, then data (if any)
     std::vector<uint8_t> packet;
+    // Header bytes
     packet.push_back('N');
     packet.push_back('E');
     packet.push_back('X');
-    packet.push_back(command);
+
+    // Append all command bytes from the vector
+    for (uint8_t byte : commands)
+    {
+        packet.push_back(byte);
+    }
+
+    // Optional additional data
     if (data && dataSize > 0)
     {
         const uint8_t *d = static_cast<const uint8_t *>(data);
         packet.insert(packet.end(), d, d + dataSize);
     }
 
-    // Compute and append checksum
+    // Compute checksum over the packet so far and append it
     uint8_t checksum = computeChecksum(packet.data(), packet.size());
     packet.push_back(checksum);
 
-    _DEBUG(// Debug: Print the sent command in HEX format
-    std::cout << "Sent Command (HEX): ";
-    for (auto byte : packet)
-    {
-        printf("0x%02X ", byte);
-    }
-    std::cout << std::endl;)
+    _DEBUG(
+        std::cout << "Sent Packet (HEX): ";
+        for (auto byte : packet) {
+            printf("0x%02X ", byte);
+        } std::cout
+        << std::endl;)
 
-    // Write to serial and ensure all bytes are sent
-    s->flushInput(); // Clear any leftover data
+    s->flushInput();
     std::size_t bytes_written = s->write(packet);
     if (bytes_written != packet.size())
     {
@@ -173,14 +204,19 @@ bool sendCommand(serial::Serial *s, uint8_t command, const void *data, std::size
 }
 
 /**
- * @brief Receive response from the serial port into a pre-allocated buffer.
- *        expectedBytes should include the checksum.
+ * @brief Receive a response from the serial port.
+ *
+ * The response packet structure is assumed to be:
+ * Header ('S' or 'F') + Command + Data ... + Checksum
+ *
+ * The function verifies the checksum and copies the payload (after the header and command)
+ * into the provided buffer.
  *
  * @param s Pointer to the serial object.
- * @param expectedBytes Number of bytes expected in the response.
- * @param respOut Pointer to the pre-allocated output buffer.
+ * @param expectedBytes Total number of bytes expected in the response (including checksum).
+ * @param respOut Pointer to the output buffer.
  * @param outSize Size (in bytes) of the output buffer.
- * @return true if the response is received successfully; false otherwise.
+ * @return true if the response is received and verified successfully; false otherwise.
  */
 bool receiveResponse(serial::Serial *s, std::size_t expectedBytes, void *respOut, std::size_t outSize)
 {
@@ -193,12 +229,12 @@ bool receiveResponse(serial::Serial *s, std::size_t expectedBytes, void *respOut
     std::vector<uint8_t> response;
     std::size_t bytes_read = s->read(response, expectedBytes);
 
-    _DEBUG(std::cout << "Raw Response (HEX): ";
-    for (auto byte : response)
-    {
-        printf("0x%02X ", byte);
-    }
-    std::cout << std::endl;)
+    _DEBUG(
+        std::cout << "Raw Response (HEX): ";
+        for (auto byte : response) {
+            printf("0x%02X ", byte);
+        } std::cout
+        << std::endl;)
 
     if (response.empty() || response.size() < 3) // Minimum: header + command + checksum
     {
@@ -207,8 +243,6 @@ bool receiveResponse(serial::Serial *s, std::size_t expectedBytes, void *respOut
     }
 
     uint8_t receivedChecksum = response.back();
-    // size_t withoutChecksumSize = response.size() - 1;
-    // Create a temporary buffer without the checksum
     std::vector<uint8_t> withoutChecksum(response.begin(), response.end() - 1);
     uint8_t computedChecksum = computeChecksum(withoutChecksum.data(), withoutChecksum.size());
     if (receivedChecksum != computedChecksum)
@@ -218,7 +252,7 @@ bool receiveResponse(serial::Serial *s, std::size_t expectedBytes, void *respOut
         return FAILURE;
     }
 
-    // Skip header + command (assume first 2 bytes) to get the payload.
+    // Assume first two bytes (header and command) are not part of the payload
     if (withoutChecksum.size() < 2)
     {
         std::cerr << "❌ Response too short." << std::endl;
@@ -227,40 +261,35 @@ bool receiveResponse(serial::Serial *s, std::size_t expectedBytes, void *respOut
     std::size_t available = withoutChecksum.size() - 2;
     if (outSize > available)
     {
-        std::cerr << "❌ Requested output size (" << outSize << ") is larger than available payload ("
-                  << available << ")." << std::endl;
+        std::cerr << "❌ Requested output size (" << outSize << ") is larger than available payload (" << available << ")." << std::endl;
         return FAILURE;
     }
 
-    std::memcpy(respOut, withoutChecksum.data()+2, outSize);
+    std::memcpy(respOut, withoutChecksum.data() + 2, outSize);
     return SUCCESS;
 }
 
 /**
- * @brief Execute a command: send, receive, verify checksum, and return the response in a raw buffer.
+ * @brief Execute a packet-based command by sending the packet and then receiving the response.
  *
- * The function sends the command with optional data, reads the entire response (including checksum),
- * verifies the checksum, and then copies the response payload (excluding header and command) into the
- * provided output buffer.
+ * This function uses sendPacket and receiveResponse internally.
  *
  * @param s Pointer to the serial object.
- * @param command Command byte.
- * @param data Pointer to the data to send (pass nullptr if no data).
- * @param dataSize Size (in bytes) of the data to send.
- * @param expectedBytes Total number of bytes expected in the response (including checksum).\n"
- * @param respOut Pointer to the pre-allocated output buffer where the payload will be copied.\n"
- *                (The payload is the response with header and command skipped.)\n"
- * @param outSize Size (in bytes) of the output buffer. Must be ≤ (expectedBytes - 2).\n"
- *                (Here, we assume the first two bytes of the response are header+command.)\n"
- * @return true if successful; false otherwise.
+ * @param commands Vector of command bytes (can include subcommands if needed).
+ * @param data Pointer to additional data bytes (can be nullptr).
+ * @param dataSize Number of additional data bytes.
+ * @param expectedBytes Total expected bytes in the response (including checksum).
+ * @param respOut Pointer to the pre-allocated output buffer for the payload.
+ * @param outSize Size of the output buffer.
+ * @return true if the command is executed successfully; false otherwise.
  */
-bool executeCommand(serial::Serial *s, uint8_t command, const void *data, std::size_t dataSize,
+bool executeCommand(serial::Serial *s, const std::vector<uint8_t> &commands, const void *data, std::size_t dataSize,
                     std::size_t expectedBytes, void *respOut, std::size_t outSize)
 {
-    if (!sendCommand(s, command, data, dataSize))
+    if (!sendPacket(s, commands, data, dataSize))
         return FAILURE;
 
-    if(!receiveResponse(s,expectedBytes,respOut,outSize))
+    if (!receiveResponse(s, expectedBytes, respOut, outSize))
         return FAILURE;
     return SUCCESS;
 }

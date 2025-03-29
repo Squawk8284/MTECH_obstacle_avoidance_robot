@@ -1,10 +1,8 @@
 /**
  * @file motor_control_api.hpp
  * @author Kartik Sahasrabudhe
- * @brief Motor control API for NEX robot.
- *        This file converts function arguments and responses to/from raw bytes using the new
- *        void*-based interface in nex_robot.hpp.
- * @version 0.1
+ * @brief Motor control API for NEX robot using vector‐based commands.
+ * @version 0.3
  * @date 2025-03-17
  *
  * @copyright Copyright (c) 2025
@@ -14,15 +12,14 @@
 
 #include <nex_robot.hpp>
 #include <vector>
-#include <cstdint>
-#include <cstring>  // For memcpy
 
-#define SAFETY_ON  (1)
+// Convenience macros for safety and mode values.
+#define SAFETY_ON (1)
 #define SAFETY_OFF (0)
 
-#define OPEN_LOOP_CONTROL   (0)
+#define OPEN_LOOP_CONTROL (0)
 #define CLOSED_LOOP_CONTROL (1)
-#define POSITION_CONTROL    (2)
+#define POSITION_CONTROL (2)
 
 // ---------------------------------------------------------------------------
 // Motor Control Commands
@@ -34,37 +31,38 @@
  * If no command is sent to the robot before the timeout, it will simply stop its motion.
  *
  * @param s Pointer to the serial object.
- * @param timeout Timeout value in seconds (int8).
+ * @param timeout Timeout value in seconds.
  * @return true if the command is successfully set.
  * @return false if the command fails to execute.
  */
 bool setSafetyTimeout(serial::Serial *s, float timeout)
 {
-    _DEBUG(std::cout << "Setting Safety Timeout to " << timeout << "s" << std::endl;)
-    uint8_t data[2] = { 0x01, static_cast<uint8_t>(timeout) };
-    // expected response length = 3 bytes; no output data needed.
-    return executeCommand(s, 0x7A, data, sizeof(data), 3, nullptr, 0);
+    _DEBUG(PrintLn("Setting the Safety Timeout to ", timeout, "s"));
+    uint8_t timeoutByte = static_cast<uint8_t>(timeout);
+    if (!executeCommand(s, CMD(SetSafetyTimeout, 0x7A, 0x01), &timeoutByte, sizeof(timeoutByte), ReturnPayload(0), nullptr, 0))
+    {
+        return FAILURE;
+    }
+    return SUCCESS;
 }
-
 
 /**
  * @brief Get safety timeout; expected response length: 4 bytes.
  *
- * The returned payload (after skipping header and command) is 2 bytes.
+ * The returned payload (after skipping header, command and checksum) is 1 byte.
  *
  * @param s Pointer to the serial object.
  * @param outData Pointer to a vector in which to store the response payload.
  * @return true if successful.
  * @return false if failed.
  */
-bool getSafetyTimeout(serial::Serial *s, std::vector<uint8_t> *outData)
+bool getSafetyTimeout(serial::Serial *s, std::vector<uint8_t> *safetyTimeout)
 {
-    uint8_t data = 0x02;
-    uint8_t buffer = 0; // 4 bytes expected response -> payload = 2 bytes
-    bool success = executeCommand(s, 0x7A, &data, sizeof(data), 4, &buffer, sizeof(buffer));
-    if (success && outData)
+    uint8_t buffer = 0;
+    bool success = executeCommand(s, CMD(GetSafetyTimeout, 0x7A, 0x20), nullptr, 0, ReturnPayload(1), &buffer, sizeof(buffer));
+    if (success && safetyTimeout)
     {
-        outData->assign(sizeof(buffer), buffer);
+        safetyTimeout->assign(&buffer, &buffer + sizeof(buffer));
     }
     return success;
 }
@@ -81,7 +79,11 @@ bool getSafetyTimeout(serial::Serial *s, std::vector<uint8_t> *outData)
  */
 bool setSafetyMode(serial::Serial *s, uint8_t mode)
 {
-    return executeCommand(s, 0x89, &mode, sizeof(mode), 3, nullptr, 0);
+    if(!executeCommand(s, CMD(SetSafetyMode, 0x89), &mode, sizeof(mode), ReturnPayload(0), nullptr, 0))
+    {
+        return FAILURE;
+    }
+    return SUCCESS;
 }
 
 /**
@@ -96,7 +98,7 @@ bool setSafetyMode(serial::Serial *s, uint8_t mode)
  */
 bool setRobotMode(serial::Serial *s, uint8_t mode)
 {
-    return executeCommand(s, 0x90, &mode, sizeof(mode), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetRobotMode, 0x90), &mode, sizeof(mode), 3, nullptr, 0);
 }
 
 /**
@@ -111,9 +113,9 @@ bool setRobotMode(serial::Serial *s, uint8_t mode)
  */
 bool getRobotMode(serial::Serial *s, std::vector<uint8_t> *outData)
 {
-    uint8_t data = 0x00;
+    uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x91, &data, sizeof(data), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetRobotMode, 0x91), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -133,7 +135,8 @@ bool getRobotMode(serial::Serial *s, std::vector<uint8_t> *outData)
  */
 bool setAcceleration(serial::Serial *s, uint8_t acc)
 {
-    return executeCommand(s, 0x98, &acc, sizeof(acc), 3, nullptr, 0);
+    // Command 0x98 (no subcommand)
+    return executeCommand(s, CMD(SetAcceleration, 0x98), &acc, sizeof(acc), 3, nullptr, 0);
 }
 
 /**
@@ -148,9 +151,9 @@ bool setAcceleration(serial::Serial *s, uint8_t acc)
  */
 bool getAcceleration(serial::Serial *s, std::vector<uint8_t> *outData)
 {
-    uint8_t data = 0x00;
+    uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x99, &data, sizeof(data), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetAcceleration, 0x99), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -173,7 +176,7 @@ bool setLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
     uint8_t data[2];
     data[0] = static_cast<uint8_t>((*velocity) >> 8);
     data[1] = static_cast<uint8_t>((*velocity) & 0xFF);
-    return executeCommand(s, 0x95, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetLeftMotorVelocity, 0x95), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -189,8 +192,8 @@ bool setLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
 bool getLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
     uint8_t dummy = 0x00;
-    uint8_t buffer[3] = {0}; // expected response: 5 bytes, payload = 3 bytes; we use first 2 bytes of payload.
-    bool success = executeCommand(s, 0x9A, &dummy, sizeof(dummy), 5, buffer, 2);
+    uint8_t buffer[2] = {0}; // expected payload: 2 bytes
+    bool success = executeCommand(s, CMD(GetLeftMotorVelocity, 0x9A), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
     if (!success)
         return false;
     *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
@@ -210,7 +213,7 @@ bool setRightMotorVelocity(serial::Serial *s, int16_t *velocity)
     uint8_t data[2];
     data[0] = static_cast<uint8_t>((*velocity) >> 8);
     data[1] = static_cast<uint8_t>((*velocity) & 0xFF);
-    return executeCommand(s, 0x96, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetRightMotorVelocity, 0x96), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -224,8 +227,8 @@ bool setRightMotorVelocity(serial::Serial *s, int16_t *velocity)
 bool getRightMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
     uint8_t dummy = 0x00;
-    uint8_t buffer[3] = {0}; // payload of 2 bytes expected
-    bool success = executeCommand(s, 0x9B, &dummy, sizeof(dummy), 5, buffer, 2);
+    uint8_t buffer[2] = {0};
+    bool success = executeCommand(s, CMD(GetRightMotorVelocity, 0x9B), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
     if (!success)
         return false;
     *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
@@ -238,20 +241,18 @@ bool getRightMotorVelocity(serial::Serial *s, int16_t *velocity)
  * Converts m/s to mm/s (by multiplying by 1000) to satisfy the protocol.
  *
  * @param s Pointer to the serial object.
- * @param velocity Pointer to an int16_t containing the velocity in m/s.
+ * @param velocity Pointer to a float containing the velocity in m/s.
  * @return true if successful.
  * @return false if failed.
  */
-bool setLeftMotorVelocity_mps(serial::Serial *s, float *velocity) 
+bool setLeftMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
-    // Dereference the pointer to get the float value, then convert m/s to mm/s
     int16_t vel_mm = static_cast<int16_t>((*velocity) * 1000);
     uint8_t data[2];
     data[0] = static_cast<uint8_t>(vel_mm >> 8);
     data[1] = static_cast<uint8_t>(vel_mm & 0xFF);
-    return executeCommand(s, 0x70, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetLeftMotorVelocity_mps, 0x70), data, sizeof(data), 3, nullptr, 0);
 }
-
 
 /**
  * @brief Get left motor velocity in m/s; expected response length: 5 bytes.
@@ -259,19 +260,19 @@ bool setLeftMotorVelocity_mps(serial::Serial *s, float *velocity)
  * Converts the raw mm/s value to m/s (by dividing by 1000).
  *
  * @param s Pointer to the serial object.
- * @param velocity Pointer to an int16_t where the m/s value will be stored.
+ * @param velocity Pointer to a float where the m/s value will be stored.
  * @return true if successful.
  * @return false if failed.
  */
 bool getLeftMotorVelocity_mmps(serial::Serial *s, float *velocity)
 {
     uint8_t dummy = 0x00;
-    uint8_t buffer[3] = {0};
-    bool success = executeCommand(s, 0x76, &dummy, sizeof(dummy), 5, buffer, 2);
+    uint8_t buffer[2] = {0};
+    bool success = executeCommand(s, CMD(GetLeftMotorVelocity_mmps, 0x76), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
     if (!success)
         return false;
     int16_t raw = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
-    *velocity = raw / 1000; // Convert mm/s to m/s
+    *velocity = raw / 1000.0f;
     return true;
 }
 
@@ -279,26 +280,26 @@ bool getLeftMotorVelocity_mmps(serial::Serial *s, float *velocity)
  * @brief Set right motor velocity in m/s (two bytes); expected response length: 3 bytes.
  *
  * @param s Pointer to the serial object.
- * @param velocity Pointer to an int16_t containing the velocity in m/s.
+ * @param velocity Pointer to a float containing the velocity in m/s.
  * @return true if successful.
  * @return false if failed.
  */
-bool setRightMotorVelocity_mps(serial::Serial *s, float *velocity) 
+bool setRightMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
-    // Dereference the pointer, multiply by 1000, then cast to int16_t.
     int16_t vel_mm = static_cast<int16_t>((*velocity) * 1000);
     uint8_t data[2];
     data[0] = static_cast<uint8_t>(vel_mm >> 8);
     data[1] = static_cast<uint8_t>(vel_mm & 0xFF);
-    return executeCommand(s, 0x71, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetRightMotorVelocity_mps, 0x71), data, sizeof(data), 3, nullptr, 0);
 }
 
-
 /**
- * @brief Get right motor velocity in mm/s; expected response length: 5 bytes.
+ * @brief Get right motor velocity in m/s; expected response length: 5 bytes.
+ *
+ * Returns the raw payload (2 bytes) in a vector.
  *
  * @param s Pointer to the serial object.
- * @param outData Pointer to a vector to store the raw payload (2 bytes).
+ * @param outData Pointer to a vector to store the payload.
  * @return true if successful.
  * @return false if failed.
  */
@@ -306,7 +307,7 @@ bool getRightMotorVelocity_mmps(serial::Serial *s, std::vector<uint8_t> *outData
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x77, &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetRightMotorVelocity_mmps, 0x77), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -326,7 +327,7 @@ bool getRightMotorVelocity_mmps(serial::Serial *s, std::vector<uint8_t> *outData
 bool setLeftMotorVelocity_radps(serial::Serial *s, uint8_t msb, uint8_t lsb)
 {
     uint8_t data[2] = {msb, lsb};
-    return executeCommand(s, 0x7B, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetLeftMotorVelocity_radps, 0x7B), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -340,10 +341,8 @@ bool setLeftMotorVelocity_radps(serial::Serial *s, uint8_t msb, uint8_t lsb)
 bool getLeftMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
-    uint8_t buffer[2]; // Expected payload size for rad/s response: usually 2 bytes (adjust if needed)
-    // For example, assume 2 bytes payload:
     uint8_t buf[2] = {0};
-    bool success = executeCommand(s, 0x7D, &dummy, sizeof(dummy), 5, buf, sizeof(buf));
+    bool success = executeCommand(s, CMD(GetLeftMotorVelocity_radps, 0x7D), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
     if (success && outData)
     {
         outData->assign(buf, buf + sizeof(buf));
@@ -363,7 +362,7 @@ bool getLeftMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outData
 bool setRightMotorVelocity_radps(serial::Serial *s, uint8_t msb, uint8_t lsb)
 {
     uint8_t data[2] = {msb, lsb};
-    return executeCommand(s, 0x7C, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetRightMotorVelocity_radps, 0x7C), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -378,7 +377,7 @@ bool getRightMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outDat
 {
     uint8_t dummy = 0x00;
     uint8_t buf[2] = {0};
-    bool success = executeCommand(s, 0x7E, &dummy, sizeof(dummy), 5, buf, sizeof(buf));
+    bool success = executeCommand(s, CMD(GetRightMotorVelocity_radps, 0x7E), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
     if (success && outData)
     {
         outData->assign(buf, buf + sizeof(buf));
@@ -398,7 +397,7 @@ bool getRightMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outDat
 bool setRobotAngularVelocity(serial::Serial *s, uint8_t msb, uint8_t lsb)
 {
     uint8_t data[2] = {msb, lsb};
-    return executeCommand(s, 0x74, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetRobotAngularVelocity, 0x74), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -413,7 +412,7 @@ bool getRobotAngularVelocity(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buf[2] = {0};
-    bool success = executeCommand(s, 0x78, &dummy, sizeof(dummy), 5, buf, sizeof(buf));
+    bool success = executeCommand(s, CMD(GetRobotAngularVelocity, 0x78), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
     if (success && outData)
     {
         outData->assign(buf, buf + sizeof(buf));
@@ -434,7 +433,7 @@ bool getRobotAngularVelocity(serial::Serial *s, std::vector<uint8_t> *outData)
  */
 bool setRobotDirection(serial::Serial *s, uint8_t direction)
 {
-    return executeCommand(s, 0x94, &direction, sizeof(direction), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetRobotDirection, 0x94), &direction, sizeof(direction), 3, nullptr, 0);
 }
 
 /**
@@ -448,8 +447,8 @@ bool setRobotDirection(serial::Serial *s, uint8_t direction)
 bool getLeftMotorEncoderCounts(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
-    uint8_t buf[3] = {0}; // Adjust payload size if necessary
-    bool success = executeCommand(s, 0x92, &dummy, sizeof(dummy), 5, buf, 3);
+    uint8_t buf[3] = {0};
+    bool success = executeCommand(s, CMD(GetLeftMotorEncoderCounts, 0x92), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
     if (success && outData)
     {
         outData->assign(buf, buf + 3);
@@ -469,7 +468,7 @@ bool getRightMotorEncoderCounts(serial::Serial *s, std::vector<uint8_t> *outData
 {
     uint8_t dummy = 0x00;
     uint8_t buf[3] = {0};
-    bool success = executeCommand(s, 0x93, &dummy, sizeof(dummy), 5, buf, 3);
+    bool success = executeCommand(s, CMD(GetRightMotorEncoderCounts, 0x93), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
     if (success && outData)
     {
         outData->assign(buf, buf + 3);
@@ -486,7 +485,7 @@ bool getRightMotorEncoderCounts(serial::Serial *s, std::vector<uint8_t> *outData
  */
 bool clearEncoderCounts(serial::Serial *s)
 {
-    return executeCommand(s, 0x9C, nullptr, 0, 3, nullptr, 0);
+    return executeCommand(s, CMD(ClearEncoderCounts, 0x9C), nullptr, 0, 3, nullptr, 0);
 }
 
 /**
@@ -521,7 +520,7 @@ bool setPosition(serial::Serial *s, uint32_t posLeft, uint8_t velLeft, uint32_t 
     data[7] = (posRight >> 8) & 0xFF;
     data[8] = posRight & 0xFF;
     data[9] = velRight;
-    return executeCommand(s, 0x40, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetPosition, 0x40), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -539,7 +538,7 @@ bool setLinearPosition(serial::Serial *s, uint32_t position)
     data[1] = (position >> 16) & 0xFF;
     data[2] = (position >> 8) & 0xFF;
     data[3] = position & 0xFF;
-    return executeCommand(s, 0x41, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetLinearPosition, 0x41), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -557,7 +556,7 @@ bool setAngularPosition(serial::Serial *s, uint32_t position)
     data[1] = (position >> 16) & 0xFF;
     data[2] = (position >> 8) & 0xFF;
     data[3] = position & 0xFF;
-    return executeCommand(s, 0x42, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetAngularPosition, 0x42), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -572,7 +571,7 @@ bool getLeftMotorVoltage(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x9D, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetLeftMotorVoltage, 0x9D), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -592,7 +591,7 @@ bool getRightMotorVoltage(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x9E, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetRightMotorVoltage, 0x9E), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -612,7 +611,7 @@ bool getLeftMotorCurrent(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x9F, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetLeftMotorCurrent, 0x9F), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -632,7 +631,7 @@ bool getRightMotorCurrent(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0xA0, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetRightMotorCurrent, 0xA0), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -653,7 +652,7 @@ bool setWheelDiameterMicron(serial::Serial *s, uint16_t diameter)
     uint8_t data[2];
     data[0] = static_cast<uint8_t>(diameter >> 8);
     data[1] = static_cast<uint8_t>(diameter & 0xFF);
-    return executeCommand(s, 0x50, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetWheelDiameterMicron, 0x50), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -668,7 +667,7 @@ bool getWheelDiameterMicron(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x51, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetWheelDiameterMicron, 0x51), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -689,7 +688,7 @@ bool setAxleLengthMicron(serial::Serial *s, uint16_t length)
     uint8_t data[2];
     data[0] = static_cast<uint8_t>(length >> 8);
     data[1] = static_cast<uint8_t>(length & 0xFF);
-    return executeCommand(s, 0x52, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetAxleLengthMicron, 0x52), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -704,7 +703,7 @@ bool getAxleLengthMicron(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x53, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetAxleLengthMicron, 0x53), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -725,7 +724,7 @@ bool setMaxRobotVelocity_mps(serial::Serial *s, uint16_t vel)
     uint8_t data[2];
     data[0] = static_cast<uint8_t>(vel >> 8);
     data[1] = static_cast<uint8_t>(vel & 0xFF);
-    return executeCommand(s, 0x54, data, sizeof(data), 3, nullptr, 0);
+    return executeCommand(s, CMD(SetMaxRobotVelocity_mps, 0x54), data, sizeof(data), 3, nullptr, 0);
 }
 
 /**
@@ -740,7 +739,7 @@ bool getMaxRobotVelocity_mmps(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x55, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetMaxRobotVelocity_mmps, 0x55), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
@@ -760,70 +759,12 @@ bool getEncoderResolution(serial::Serial *s, std::vector<uint8_t> *outData)
 {
     uint8_t dummy = 0x00;
     uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, 0x56, &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
+    bool success = executeCommand(s, CMD(GetEncoderResolution, 0x56), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
     if (success && outData)
     {
         outData->assign(buffer, buffer + sizeof(buffer));
     }
     return success;
-}
-
-
-/**
- * @brief Get the orientation of the robot (yaw, pitch, roll) from the IMU.
- *
- * This function sets the IMU to output orientation angles in binary format
- * by sending the "#ob" command. It then sends "#f" to request one frame of data,
- * which is expected to be 12 bytes long (3 floats in little-endian order).
- * The angles (in degrees) are extracted into the provided pointers.
- *
- * @param s Pointer to the serial object connected to the IMU.
- * @param yaw Pointer to a float where the yaw (heading) will be stored.
- * @param pitch Pointer to a float where the pitch will be stored.
- * @param roll Pointer to a float where the roll will be stored.
- * @return true if the orientation is retrieved successfully.
- * @return false if any error occurs during communication or data retrieval.
- */
-bool getOrientation(serial::Serial *s, float *yaw, float *pitch, float *roll)
-{
-    if (!s || !s->isOpen())
-    {
-        std::cerr << "❌ Serial port not open!" << std::endl;
-        return FAILURE;
-    }
-    
-    // Set IMU to binary output mode for orientation angles
-    std::string setModeCmd = "#oscb";
-    s->flushInput();
-    s->write(setModeCmd);
-    // Optional: wait a short delay for the IMU to process the command
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    
-    // Request one output frame with orientation data
-    std::string requestFrameCmd = "#f";
-    s->flushInput();
-    s->write(requestFrameCmd);
-    
-    // Expecting 12 bytes: 4 bytes each for yaw, pitch, and roll.
-    uint8_t buffer[36] = {0};
-    std::size_t bytesRead = s->read(buffer, 36);
-    if (bytesRead != 36)
-    {
-        std::cerr << "❌ Failed to read orientation data from IMU. Expected 12 bytes, got "
-                  << bytesRead << std::endl;
-        return FAILURE;
-    }
-    
-    // Convert the 12 bytes into 3 floats (assuming little-endian byte order)
-    std::memcpy(yaw,   buffer+24,      4);
-    std::memcpy(pitch, buffer + 28,  4);
-    std::memcpy(roll,  buffer + 32,  4);
-
-    *yaw+=180;
-    *pitch+=180;
-    *roll+=180;
-    
-    return SUCCESS;
 }
 
 #endif // __MOTOR_CONTORL_APIS__

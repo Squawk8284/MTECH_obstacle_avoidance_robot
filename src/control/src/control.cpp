@@ -14,6 +14,7 @@
 #include <iostream>
 #include <nex_robot.hpp>
 #include <motor_control_api.hpp>
+#include <inertial_control_api.hpp>
 
 int main(int argc, char **argv)
 {
@@ -41,7 +42,7 @@ int main(int argc, char **argv)
     // if(!setRightMotorVelocity_mps(robotPort, &velocity));
     // if(!setRobotDirection(robotPort, 1));
 
-    if (getOrientation(imuPort, &yaw, &pitch, &roll))
+    if (getOrientationUSB(imuPort, &yaw, &pitch, &roll))
     {
         std::cout << "Orientation:" << std::endl;
         std::cout << "Yaw  : " << yaw << " degrees" << std::endl;
