@@ -9,7 +9,7 @@ class ActualPathPublisher:
         self.path_pub = rospy.Publisher("/actual_path", Path, queue_size=10)
         self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
         self.path = Path()
-        self.path.header.frame_id = "odom"  # Ensure this matches your TF fixed frame
+        self.path.header.frame_id = "map"  # Ensure this matches your TF fixed frame
         self.path.poses = []  # Clear any existing poses
 
     def odom_callback(self, msg):

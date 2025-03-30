@@ -1,5 +1,5 @@
 <launch>
-    <!-- <include file="$(find control)/launch/control.launch" /> -->
+    <include file="$(find control)/launch/control.launch" />
     <include file="$(find gmpc_controller)/launch/gmpc.launch" />
     <!-- <include file="$(find simulations)/launch/nex.launch" /> -->
 </launch>

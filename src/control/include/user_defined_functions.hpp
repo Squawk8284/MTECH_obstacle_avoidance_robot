@@ -12,7 +12,6 @@
 #ifndef __USER_DEFINED__FUNCTIONS__
 #define __USER_DEFINED__FUNCTIONS__
 
-#include <nex_robot.hpp>
 #include <iostream>
 #include <nex_robot.hpp>
 #include <motor_control_api.hpp>
@@ -32,6 +31,13 @@ extern serial::Serial *imuPort;
 // Function Defination
 // ---------------------------------------------------------------------------
 
+void init()
+{
+    setSafetyMode(robotPort,SAFETY_OFF);
+    setRobotMode(robotPort,CLOSED_LOOP_CONTROL);
+    setWheelDiameter_mm(robotPort, 260);
+    setAxleLength_mm(robotPort, 590);
+}
 void CmdLinearVelocity_mps(float linearVelocity)
 {
     setLeftMotorVelocity_mps(robotPort, linearVelocity);

@@ -46,7 +46,7 @@ def publish_path_and_markers(path_points, reverse_path=False):
         # Publish Path message
         path_msg = Path()
         path_msg.header.stamp = rospy.Time.now()
-        path_msg.header.frame_id = "odom"
+        path_msg.header.frame_id = "map"
         
         for i, point in enumerate(path_points):
             # Compute derivative for orientation (tangent) estimation
@@ -74,7 +74,7 @@ def publish_path_and_markers(path_points, reverse_path=False):
         # Publish markers for start and end points
         for i, (p, color) in enumerate([(start_point, (0, 1, 0)), (end_point, (1, 0, 0))]):
             marker = Marker()
-            marker.header.frame_id = "odom"
+            marker.header.frame_id = "map"
             marker.header.stamp = rospy.Time.now()
             marker.ns = "path_markers"
             marker.id = i

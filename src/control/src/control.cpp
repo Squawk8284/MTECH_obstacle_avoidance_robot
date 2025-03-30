@@ -24,7 +24,8 @@ int main(int argc, char **argv)
     try
     {
         robotPort = createSerial("/dev/ttyRobot", 57600);
-        ros::init(argc, argv, "cmd_vel_listener");
+        init();
+        ros::init(argc, argv, "control");
         ros::NodeHandle nh;
 
         ros::Subscriber sub = nh.subscribe("/cmd_vel", 10, cmdVelCallback);
