@@ -93,9 +93,9 @@ def publish_path_and_markers(path_points, reverse_path=False):
 if __name__ == '__main__':
     # Define control points for Bézier curve.
     control_points = np.array([
-        [5,1],
-        [6.194,3.008],
-        [6.309,3.203],
+        [6,2.5],
+        [6.28,3.088],
+        [6.214,2.957],
         [6.9,4.2]
     ])
     

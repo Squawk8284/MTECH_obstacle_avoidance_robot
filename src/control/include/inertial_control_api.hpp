@@ -14,12 +14,21 @@
 
 #include <nex_robot.hpp>
 
+#define BUZZER_ON (0x01)
+#define BUZZER_OFF (0x00)
 // ---------------------------------------------------------------------------
 // Internal IMU Sensor Commands
 // ---------------------------------------------------------------------------
 bool get3AxisAccelorometer(serial::Serial *s, float *xAccel, float *yAccel, float *zAccel)
 {
     return true;
+}
+
+bool setBuzzer(serial::Serial *s, uint8_t buzzer)
+{
+    if (!executeCommand(s, CMD(SetBuzzer, 0x30), &buzzer, sizeof(buzzer), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 // ---------------------------------------------------------------------------
