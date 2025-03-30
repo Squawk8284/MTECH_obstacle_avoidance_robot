@@ -19,26 +19,30 @@
 #include <power_management_api.hpp>
 #include <inertial_control_api.hpp>
 
-void code();
+#include <ros/ros.h>
+#include <geometry_msgs/Twist.h>
 
-void init(serial::Serial *RobotSerial, serial::Serial *IMUSerial = nullptr)
+// ---------------------------------------------------------------------------
+// Extern Variables
+// ---------------------------------------------------------------------------
+extern serial::Serial *robotPort;
+extern serial::Serial *imuPort;
+
+// ---------------------------------------------------------------------------
+// Function Defination
+// ---------------------------------------------------------------------------
+
+void CmdLinearVelocity_mps(float linearVelocity)
 {
-    
+    setLeftMotorVelocity_mps(robotPort, linearVelocity);
+    setRightMotorVelocity_mps(robotPort, linearVelocity);
+    setRobotDirection(robotPort, FORWARD);
 }
 
-void setLinearVelocityMPS(serial::Serial *RobotSerial, float linearVelocity)
+void CmdAngularVelocity_radps(float angularVelocity)
 {
-    setLeftMotorVelocity_mps(RobotSerial, linearVelocity);
-    setRightMotorVelocity_mps(RobotSerial, linearVelocity);
-    setRobotDirection(RobotSerial,FORWARD);
+    setRobotAngularVelocityRadps(robotPort, angularVelocity);
+    setRobotDirection(robotPort, FORWARD);
 }
-
-void setAngularVelocityRadps(serial::Serial *RobotSerial, float angularVelocity)
-{
-    setAngularVelocityRadps(RobotSerial,angularVelocity);
-    setRobotDirection(RobotSerial,FORWARD);
-}
-
-
 
 #endif //__USER_DEFINED__FUNCTIONS__

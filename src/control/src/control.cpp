@@ -11,16 +11,25 @@
 
 // #define DEBUG   //Uncomment to enable Debugging
 
-#include <user_defined_functions.hpp>
+// User Defined Library
+#include <ros_callbacks.hpp>
+
+// Global Objects
+serial::Serial *robotPort = nullptr;
+serial::Serial *imuPort = nullptr;
 
 int main(int argc, char **argv)
 {
-    serial::Serial *robotPort = nullptr;
+
     try
     {
         robotPort = createSerial("/dev/ttyRobot", 57600);
-        code();
-        // init(robotPort);
+        ros::init(argc, argv, "cmd_vel_listener");
+        ros::NodeHandle nh;
+
+        ros::Subscriber sub = nh.subscribe("/cmd_vel", 10, cmdVelCallback);
+
+        ros::spin();
     }
     catch (const std::exception &e)
     {
@@ -29,9 +38,4 @@ int main(int argc, char **argv)
     }
 
     return 0;
-}
-
-void code()
-{
-    PrintLn("Hello World");
 }
