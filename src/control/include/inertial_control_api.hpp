@@ -23,7 +23,7 @@ bool get3AxisAccelorometer(serial::Serial *s, float *xAccel, float *yAccel, floa
 }
 
 // ---------------------------------------------------------------------------
-// External IMU Sensor Commands
+// External IMU Sensor Commands - 9DOF Razor IMU
 // ---------------------------------------------------------------------------
 
 /**

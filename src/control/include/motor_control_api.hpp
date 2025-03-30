@@ -11,15 +11,22 @@
 #define __MOTOR_CONTORL_APIS__
 
 #include <nex_robot.hpp>
-#include <vector>
 
 // Convenience macros for safety and mode values.
 #define SAFETY_ON (1)
 #define SAFETY_OFF (0)
 
+// Robot Mode
 #define OPEN_LOOP_CONTROL (0)
 #define CLOSED_LOOP_CONTROL (1)
 #define POSITION_CONTROL (2)
+
+// Robot Direction
+#define FORWARD (0x01)
+#define REVERSE (0x02)
+#define LEFT (0x03)
+#define RIGHT (0x04)
+#define STOP (0x06)
 
 // ---------------------------------------------------------------------------
 // Motor Control Commands
@@ -31,14 +38,14 @@
  * If no command is sent to the robot before the timeout, it will simply stop its motion.
  *
  * @param s Pointer to the serial object.
- * @param timeout Timeout value in seconds.
+ * @param timeout Timeout value in seconds. (Integer only)
  * @return true if the command is successfully set.
  * @return false if the command fails to execute.
  */
 bool setSafetyTimeout(serial::Serial *s, float timeout)
 {
-    _DEBUG(PrintLn("Setting the Safety Timeout to ", timeout, "s"));
-    uint8_t timeoutByte = static_cast<uint8_t>(timeout);
+    _DEBUG(PrintLn("Setting the Safety Timeout to ", static_cast<int8_t>(timeout), "s"));
+    int8_t timeoutByte = static_cast<int8_t>(timeout);
     if (!executeCommand(s, CMD(SetSafetyTimeout, 0x7A, 0x01), &timeoutByte, sizeof(timeoutByte), ReturnPayload(0), nullptr, 0))
     {
         return FAILURE;
@@ -56,15 +63,15 @@ bool setSafetyTimeout(serial::Serial *s, float timeout)
  * @return true if successful.
  * @return false if failed.
  */
-bool getSafetyTimeout(serial::Serial *s, std::vector<uint8_t> *safetyTimeout)
+bool getSafetyTimeout(serial::Serial *s, float *safetyTimeout)
 {
-    uint8_t buffer = 0;
-    bool success = executeCommand(s, CMD(GetSafetyTimeout, 0x7A, 0x20), nullptr, 0, ReturnPayload(1), &buffer, sizeof(buffer));
-    if (success && safetyTimeout)
-    {
-        safetyTimeout->assign(&buffer, &buffer + sizeof(buffer));
-    }
-    return success;
+    int8_t buffer = 0;
+    if (!executeCommand(s, CMD(GetSafetyTimeout, 0x7A, 0x02), nullptr, 0, ReturnPayload(1), &buffer, sizeof(buffer)))
+        return FAILURE;
+
+    *safetyTimeout = static_cast<float>(buffer);
+
+    return SUCCESS;
 }
 
 /**
@@ -79,7 +86,7 @@ bool getSafetyTimeout(serial::Serial *s, std::vector<uint8_t> *safetyTimeout)
  */
 bool setSafetyMode(serial::Serial *s, uint8_t mode)
 {
-    if(!executeCommand(s, CMD(SetSafetyMode, 0x89), &mode, sizeof(mode), ReturnPayload(0), nullptr, 0))
+    if (!executeCommand(s, CMD(SetSafetyMode, 0x89), &mode, sizeof(mode), ReturnPayload(0), nullptr, 0))
     {
         return FAILURE;
     }
@@ -98,7 +105,9 @@ bool setSafetyMode(serial::Serial *s, uint8_t mode)
  */
 bool setRobotMode(serial::Serial *s, uint8_t mode)
 {
-    return executeCommand(s, CMD(SetRobotMode, 0x90), &mode, sizeof(mode), 3, nullptr, 0);
+    if (!executeCommand(s, CMD(SetRobotMode, 0x90), &mode, sizeof(mode), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -111,16 +120,11 @@ bool setRobotMode(serial::Serial *s, uint8_t mode)
  * @return true if successful.
  * @return false if failed.
  */
-bool getRobotMode(serial::Serial *s, std::vector<uint8_t> *outData)
+bool getRobotMode(serial::Serial *s, uint8_t *RobotMode)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, CMD(GetRobotMode, 0x91), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
-    if (success && outData)
-    {
-        outData->assign(buffer, buffer + sizeof(buffer));
-    }
-    return success;
+    if (!executeCommand(s, CMD(GetRobotMode, 0x91, 0x00), nullptr, 0, ReturnPayload(1), RobotMode, sizeof(RobotMode)))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -135,8 +139,9 @@ bool getRobotMode(serial::Serial *s, std::vector<uint8_t> *outData)
  */
 bool setAcceleration(serial::Serial *s, uint8_t acc)
 {
-    // Command 0x98 (no subcommand)
-    return executeCommand(s, CMD(SetAcceleration, 0x98), &acc, sizeof(acc), 3, nullptr, 0);
+    if (!executeCommand(s, CMD(SetAcceleration, 0x98), &acc, sizeof(acc), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -149,16 +154,14 @@ bool setAcceleration(serial::Serial *s, uint8_t acc)
  * @return true if successful.
  * @return false if failed.
  */
-bool getAcceleration(serial::Serial *s, std::vector<uint8_t> *outData)
+bool getAcceleration(serial::Serial *s, float *Acceleration)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, CMD(GetAcceleration, 0x99), &dummy, sizeof(dummy), 4, buffer, sizeof(buffer));
-    if (success && outData)
-    {
-        outData->assign(buffer, buffer + sizeof(buffer));
-    }
-    return success;
+    uint8_t buffer;
+    if (!executeCommand(s, CMD(GetAcceleration, 0x99, 0x00), nullptr, 0, ReturnPayload(1), &buffer, sizeof(buffer)))
+        return FAILURE;
+
+    *Acceleration = buffer * 168.72; // As per the software Manual
+    return SUCCESS;
 }
 
 /**
@@ -173,10 +176,12 @@ bool getAcceleration(serial::Serial *s, std::vector<uint8_t> *outData)
  */
 bool setLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
-    uint8_t data[2];
-    data[0] = static_cast<uint8_t>((*velocity) >> 8);
-    data[1] = static_cast<uint8_t>((*velocity) & 0xFF);
-    return executeCommand(s, CMD(SetLeftMotorVelocity, 0x95), data, sizeof(data), 3, nullptr, 0);
+    int8_t data[2];
+    data[0] = static_cast<int8_t>((*velocity) >> 8);   // MSB
+    data[1] = static_cast<int8_t>((*velocity) & 0xFF); // LSB
+    if (!executeCommand(s, CMD(SetLeftMotorVelocity, 0x95), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -191,13 +196,11 @@ bool setLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
  */
 bool getLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buffer[2] = {0}; // expected payload: 2 bytes
-    bool success = executeCommand(s, CMD(GetLeftMotorVelocity, 0x9A), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
-    if (!success)
-        return false;
-    *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
-    return true;
+    int8_t buffer[2] = {0}; // expected payload: 2 bytes
+    if (!executeCommand(s, CMD(GetLeftMotorVelocity, 0x9A, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+    *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1]; // Re-arranging the MSB and LSB
+    return SUCCESS;
 }
 
 /**
@@ -210,10 +213,12 @@ bool getLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
  */
 bool setRightMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
-    uint8_t data[2];
-    data[0] = static_cast<uint8_t>((*velocity) >> 8);
-    data[1] = static_cast<uint8_t>((*velocity) & 0xFF);
-    return executeCommand(s, CMD(SetRightMotorVelocity, 0x96), data, sizeof(data), 3, nullptr, 0);
+    int8_t data[2];
+    data[0] = static_cast<uint8_t>((*velocity) >> 8);   // MSB
+    data[1] = static_cast<uint8_t>((*velocity) & 0xFF); // LSB
+    if (!executeCommand(s, CMD(SetRightMotorVelocity, 0x96), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -226,13 +231,11 @@ bool setRightMotorVelocity(serial::Serial *s, int16_t *velocity)
  */
 bool getRightMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, CMD(GetRightMotorVelocity, 0x9B), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
-    if (!success)
-        return false;
-    *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
-    return true;
+    int8_t buffer[2] = {0};
+    if (!executeCommand(s, CMD(GetRightMotorVelocity, 0x9B, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+    *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1]; // Re-arranging the MSB and LSB
+    return SUCCESS;
 }
 
 /**
@@ -248,10 +251,12 @@ bool getRightMotorVelocity(serial::Serial *s, int16_t *velocity)
 bool setLeftMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
     int16_t vel_mm = static_cast<int16_t>((*velocity) * 1000);
-    uint8_t data[2];
-    data[0] = static_cast<uint8_t>(vel_mm >> 8);
-    data[1] = static_cast<uint8_t>(vel_mm & 0xFF);
-    return executeCommand(s, CMD(SetLeftMotorVelocity_mps, 0x70), data, sizeof(data), 3, nullptr, 0);
+    int8_t data[2];
+    data[0] = static_cast<int8_t>(vel_mm >> 8);
+    data[1] = static_cast<int8_t>(vel_mm & 0xFF);
+    if (!executeCommand(s, CMD(SetLeftMotorVelocity_mps, 0x70), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -264,16 +269,14 @@ bool setLeftMotorVelocity_mps(serial::Serial *s, float *velocity)
  * @return true if successful.
  * @return false if failed.
  */
-bool getLeftMotorVelocity_mmps(serial::Serial *s, float *velocity)
+bool getLeftMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, CMD(GetLeftMotorVelocity_mmps, 0x76), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
-    if (!success)
-        return false;
-    int16_t raw = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
-    *velocity = raw / 1000.0f;
-    return true;
+    int8_t buffer[2] = {0};
+    if (!executeCommand(s, CMD(GetLeftMotorVelocity_mps, 0x76, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+    int16_t vel_mm = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
+    *velocity = vel_mm / 1000.0f;
+    return SUCCESS;
 }
 
 /**
@@ -287,10 +290,12 @@ bool getLeftMotorVelocity_mmps(serial::Serial *s, float *velocity)
 bool setRightMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
     int16_t vel_mm = static_cast<int16_t>((*velocity) * 1000);
-    uint8_t data[2];
-    data[0] = static_cast<uint8_t>(vel_mm >> 8);
-    data[1] = static_cast<uint8_t>(vel_mm & 0xFF);
-    return executeCommand(s, CMD(SetRightMotorVelocity_mps, 0x71), data, sizeof(data), 3, nullptr, 0);
+    int8_t data[2];
+    data[0] = static_cast<int8_t>(vel_mm >> 8);
+    data[1] = static_cast<int8_t>(vel_mm & 0xFF);
+    if (!executeCommand(s, CMD(SetRightMotorVelocity_mps, 0x71), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -303,16 +308,14 @@ bool setRightMotorVelocity_mps(serial::Serial *s, float *velocity)
  * @return true if successful.
  * @return false if failed.
  */
-bool getRightMotorVelocity_mmps(serial::Serial *s, std::vector<uint8_t> *outData)
+bool getRightMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buffer[2] = {0};
-    bool success = executeCommand(s, CMD(GetRightMotorVelocity_mmps, 0x77), &dummy, sizeof(dummy), 5, buffer, sizeof(buffer));
-    if (success && outData)
-    {
-        outData->assign(buffer, buffer + sizeof(buffer));
-    }
-    return success;
+    int8_t buffer[2] = {0};
+    if (!executeCommand(s, CMD(GetRightMotorVelocity_mps, 0x77, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+    int16_t vel_mm = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
+    *velocity = vel_mm / 1000.0f;
+    return SUCCESS;
 }
 
 /**
@@ -324,10 +327,15 @@ bool getRightMotorVelocity_mmps(serial::Serial *s, std::vector<uint8_t> *outData
  * @return true if successful.
  * @return false if failed.
  */
-bool setLeftMotorVelocity_radps(serial::Serial *s, uint8_t msb, uint8_t lsb)
+bool setLeftMotorVelocity_radps(serial::Serial *s, float *velocity_radps)
 {
-    uint8_t data[2] = {msb, lsb};
-    return executeCommand(s, CMD(SetLeftMotorVelocity_radps, 0x7B), data, sizeof(data), 3, nullptr, 0);
+    int16_t vel_rad = static_cast<int16_t>((*velocity_radps) * 1000);
+    int8_t data[2];
+    data[0] = static_cast<int8_t>(vel_rad >> 8);
+    data[1] = static_cast<int8_t>(vel_rad & 0xFF);
+    if (!executeCommand(s, CMD(SetLeftMotorVelocity_radps, 0x7B), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -338,16 +346,14 @@ bool setLeftMotorVelocity_radps(serial::Serial *s, uint8_t msb, uint8_t lsb)
  * @return true if successful.
  * @return false if failed.
  */
-bool getLeftMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outData)
+bool getLeftMotorVelocity_radps(serial::Serial *s, float *velocity_radps)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buf[2] = {0};
-    bool success = executeCommand(s, CMD(GetLeftMotorVelocity_radps, 0x7D), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
-    if (success && outData)
-    {
-        outData->assign(buf, buf + sizeof(buf));
-    }
-    return success;
+    int8_t buffer[2] = {0};
+    if (!executeCommand(s, CMD(GetLeftMotorVelocity_radps, 0x7D, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+    int16_t vel_rad = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
+    *velocity_radps = vel_rad / 1000.0f;
+    return SUCCESS;
 }
 
 /**
@@ -359,10 +365,15 @@ bool getLeftMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outData
  * @return true if successful.
  * @return false if failed.
  */
-bool setRightMotorVelocity_radps(serial::Serial *s, uint8_t msb, uint8_t lsb)
+bool setRightMotorVelocity_radps(serial::Serial *s, float *velocity_radps)
 {
-    uint8_t data[2] = {msb, lsb};
-    return executeCommand(s, CMD(SetRightMotorVelocity_radps, 0x7C), data, sizeof(data), 3, nullptr, 0);
+    int16_t vel_rad = static_cast<int16_t>((*velocity_radps) * 1000);
+    int8_t data[2];
+    data[0] = static_cast<int8_t>(vel_rad >> 8);
+    data[1] = static_cast<int8_t>(vel_rad & 0xFF);
+    if (!executeCommand(s, CMD(SetRightMotorVelocity_radps, 0x7C), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
@@ -373,20 +384,20 @@ bool setRightMotorVelocity_radps(serial::Serial *s, uint8_t msb, uint8_t lsb)
  * @return true if successful.
  * @return false if failed.
  */
-bool getRightMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outData)
+bool getRightMotorVelocity_radps(serial::Serial *s, float *velocity_radps)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buf[2] = {0};
-    bool success = executeCommand(s, CMD(GetRightMotorVelocity_radps, 0x7E), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
-    if (success && outData)
-    {
-        outData->assign(buf, buf + sizeof(buf));
-    }
-    return success;
+
+    int8_t buffer[2] = {0};
+    if (!executeCommand(s, CMD(GetRightMotorVelocity_radps, 0x7E, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+    int16_t vel_rad = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
+    *velocity_radps = vel_rad / 1000.0f;
+    return SUCCESS;
 }
 
 /**
  * @brief Set robot angular velocity in rad/s (two bytes); expected response length: 3 bytes.
+ * Anticlockwise velocity is positive
  *
  * @param s Pointer to the serial object.
  * @param msb Most significant byte.
@@ -394,30 +405,34 @@ bool getRightMotorVelocity_radps(serial::Serial *s, std::vector<uint8_t> *outDat
  * @return true if successful.
  * @return false if failed.
  */
-bool setRobotAngularVelocity(serial::Serial *s, uint8_t msb, uint8_t lsb)
+bool setRobotAngularVelocityRadps(serial::Serial *s, float *velocity_angular)
 {
-    uint8_t data[2] = {msb, lsb};
-    return executeCommand(s, CMD(SetRobotAngularVelocity, 0x74), data, sizeof(data), 3, nullptr, 0);
+    int16_t vel_ang = static_cast<int16_t>((*velocity_angular) * 1000);
+    int8_t data[2];
+    data[0] = static_cast<int8_t>(vel_ang >> 8);
+    data[1] = static_cast<int8_t>(vel_ang & 0xFF);
+    if (!executeCommand(s, CMD(SetRobotAngularVelocityRadps, 0x74), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
  * @brief Get robot angular velocity in rad/s; expected response length: 5 bytes.
+ * Anticlockwise velocity is positive
  *
  * @param s Pointer to the serial object.
  * @param outData Pointer to a vector to store the payload.
  * @return true if successful.
  * @return false if failed.
  */
-bool getRobotAngularVelocity(serial::Serial *s, std::vector<uint8_t> *outData)
+bool getRobotAngularVelocityRadps(serial::Serial *s, float *velocity_angular)
 {
-    uint8_t dummy = 0x00;
-    uint8_t buf[2] = {0};
-    bool success = executeCommand(s, CMD(GetRobotAngularVelocity, 0x78), &dummy, sizeof(dummy), 5, buf, sizeof(buf));
-    if (success && outData)
-    {
-        outData->assign(buf, buf + sizeof(buf));
-    }
-    return success;
+    int8_t buffer[2] = {0};
+    if (!executeCommand(s, CMD(GetRobotAngularVelocityRadps, 0x78, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+    int16_t vel_ang = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
+    *velocity_angular = vel_ang / 1000.0f;
+    return SUCCESS;
 }
 
 /**
@@ -433,7 +448,9 @@ bool getRobotAngularVelocity(serial::Serial *s, std::vector<uint8_t> *outData)
  */
 bool setRobotDirection(serial::Serial *s, uint8_t direction)
 {
-    return executeCommand(s, CMD(SetRobotDirection, 0x94), &direction, sizeof(direction), 3, nullptr, 0);
+    if (!executeCommand(s, CMD(SetRobotDirection, 0x94), &direction, sizeof(direction), ReturnPayload(0), nullptr, 0))
+        return FAILURE;
+    return SUCCESS;
 }
 
 /**
