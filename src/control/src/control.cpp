@@ -11,23 +11,27 @@
 
 // #define DEBUG   //Uncomment to enable Debugging
 
-#include <iostream>
-#include <nex_robot.hpp>
-#include <motor_control_api.hpp>
-#include <power_management_api.hpp>
-#include <inertial_control_api.hpp>
+#include <user_defined_functions.hpp>
 
 int main(int argc, char **argv)
 {
-    serial::Serial *robotPort = createSerial("/dev/ttyRobot", 57600);
+    serial::Serial *robotPort = nullptr;
+    try
+    {
+        robotPort = createSerial("/dev/ttyRobot", 57600);
+        code();
+        // init(robotPort);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+        clearSerial(robotPort);
+    }
 
-    float vol, cur, temp;
-    if (!setSafetyTimeout(robotPort, 10.1))
-        ;
-    if (!ReadBatteryVolCurTemp(robotPort, &vol, &cur, &temp))
-        ;
-    PrintLn("Return Value = ", vol, ",", cur, ",", temp);
-
-    clearSerial(robotPort);
     return 0;
+}
+
+void code()
+{
+    PrintLn("Hello World");
 }
