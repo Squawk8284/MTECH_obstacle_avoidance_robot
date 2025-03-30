@@ -93,16 +93,16 @@ def publish_path_and_markers(path_points, reverse_path=False):
 if __name__ == '__main__':
     # Define control points for Bézier curve.
     control_points = np.array([
-        [6.9, 4.2],
-        [5.0, 1.58],
-        [4.9, 0.73],
-        [0.6, 0.6]
+        [5,1],
+        [6.194,3.008],
+        [6.309,3.203],
+        [6.9,4.2]
     ])
     
     # Generate Bézier curve path.
     path_points = bezier_curve(control_points, num_points=100)
 
     try:
-        publish_path_and_markers(path_points, reverse_path=True)
+        publish_path_and_markers(path_points, reverse_path=False)
     except rospy.ROSInterruptException:
         pass
