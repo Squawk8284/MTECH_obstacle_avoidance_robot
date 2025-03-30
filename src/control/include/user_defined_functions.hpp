@@ -36,7 +36,7 @@ void init()
     setSafetyMode(robotPort,SAFETY_OFF);
     setRobotMode(robotPort,CLOSED_LOOP_CONTROL);
     setWheelDiameter_mm(robotPort, 260);
-    setAxleLength_mm(robotPort, 590);
+    setAxleLength_mm(robotPort, 590+80);
     setBuzzer(robotPort,BUZZER_OFF);
     
 }

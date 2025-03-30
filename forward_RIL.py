@@ -100,7 +100,7 @@ if __name__ == '__main__':
     ])
     
     # Generate Bézier curve path.
-    path_points = bezier_curve(control_points, num_points=100)
+    path_points = bezier_curve(control_points, num_points=10)
 
     try:
         publish_path_and_markers(path_points, reverse_path=False)
