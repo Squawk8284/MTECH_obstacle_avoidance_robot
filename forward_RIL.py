@@ -93,14 +93,14 @@ def publish_path_and_markers(path_points, reverse_path=False):
 if __name__ == '__main__':
     # Define control points for Bézier curve.
     control_points = np.array([
-        [6,2.5],
-        [6.28,3.088],
-        [6.214,2.957],
+        [4.5,1.8],
+        [5.45,2.44],
+        [5.48,2.50],
         [6.9,4.2]
     ])
     
     # Generate Bézier curve path.
-    path_points = bezier_curve(control_points, num_points=10)
+    path_points = bezier_curve(control_points, num_points=25)
 
     try:
         publish_path_and_markers(path_points, reverse_path=False)

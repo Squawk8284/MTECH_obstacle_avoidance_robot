@@ -231,7 +231,7 @@ bool setRightMotorVelocity(serial::Serial *s, int16_t velocity)
  */
 bool getRightMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
-    int8_t buffer[2] = {0};
+    uint8_t buffer[2] = {0};
     if (!executeCommand(s, CMD(GetRightMotorVelocity, 0x9B, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
         return FAILURE;
     *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1]; // Re-arranging the MSB and LSB
@@ -250,7 +250,7 @@ bool getRightMotorVelocity(serial::Serial *s, int16_t *velocity)
  */
 bool setLeftMotorVelocity_mps(serial::Serial *s, float velocity)
 {
-    int16_t vel_mm = static_cast<int16_t>((velocity) * 1000);
+    uint16_t vel_mm = static_cast<uint16_t>((velocity) * 1000);
     uint8_t data[2];
     data[0] = static_cast<uint8_t>(vel_mm >> 8);
     data[1] = static_cast<uint8_t>(vel_mm & 0xFF);
@@ -271,7 +271,7 @@ bool setLeftMotorVelocity_mps(serial::Serial *s, float velocity)
  */
 bool getLeftMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
-    int8_t buffer[2] = {0};
+    uint8_t buffer[2] = {0};
     if (!executeCommand(s, CMD(GetLeftMotorVelocity_mps, 0x76, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
         return FAILURE;
     int16_t vel_mm = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
@@ -289,7 +289,7 @@ bool getLeftMotorVelocity_mps(serial::Serial *s, float *velocity)
  */
 bool setRightMotorVelocity_mps(serial::Serial *s, float velocity)
 {
-    int16_t vel_mm = static_cast<int16_t>((velocity) * 1000);
+    uint16_t vel_mm = static_cast<uint16_t>((velocity) * 1000);
     uint8_t data[2];
     data[0] = static_cast<uint8_t>(vel_mm >> 8);
     data[1] = static_cast<uint8_t>(vel_mm & 0xFF);
@@ -310,7 +310,7 @@ bool setRightMotorVelocity_mps(serial::Serial *s, float velocity)
  */
 bool getRightMotorVelocity_mps(serial::Serial *s, float *velocity)
 {
-    int8_t buffer[2] = {0};
+    uint8_t buffer[2] = {0};
     if (!executeCommand(s, CMD(GetRightMotorVelocity_mps, 0x77, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
         return FAILURE;
     int16_t vel_mm = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1];
@@ -740,21 +740,21 @@ bool setWheelDiameter_mm(serial::Serial *s, float diameter)
 }
 
 /**
- * @brief Get the WheelDiameter mm object
+ * @brief Get the WheelDiameter m object
  *
  * @param s Pointer to the serial object.
- * @param diameter Wheel diameter in mm.
+ * @param diameter Wheel diameter in m.
  * @return true if successful.
  * @return false if failed.
  */
-bool getWheelDiameter_mm(serial::Serial *s, float *diameter)
+bool getWheelDiameter_m(serial::Serial *s, float *diameter)
 {
-    int8_t buffer[4];
+    uint8_t buffer[4];
     if (!executeCommand(s, CMD(GetWheelDiameter, 0x79, 0x02), nullptr, 0, ReturnPayload(4), buffer, sizeof(buffer)))
         return FAILURE;
 
-    int32_t raw_diamter = (static_cast<int32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
-    *diameter = raw_diamter / 1000.0f;
+    int32_t raw_diamter = (static_cast<uint32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
+    *diameter = raw_diamter / 1000000.0f;
     return SUCCESS;
 }
 
@@ -787,21 +787,21 @@ bool setAxleLength_mm(serial::Serial *s, float length)
 }
 
 /**
- * @brief Get the Axle Length mm
+ * @brief Get the Axle Length m
  *
  * @param s Pointer to the serial object.
- * @param length Axel length in mm
+ * @param length Axel length in m
  * @return true if successful.
  * @return false if failed.
  */
-bool getAxleLength_mm(serial::Serial *s, float *length)
+bool getAxleLength_m(serial::Serial *s, float *length)
 {
-    int8_t buffer[4];
+    uint8_t buffer[4];
     if (!executeCommand(s, CMD(GetAxelLength, 0x79, 0x04), nullptr, 0, ReturnPayload(4), buffer, sizeof(buffer)))
         return FAILURE;
 
-    int32_t raw_length = (static_cast<int32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
-    *length = raw_length / 1000.0f;
+    int32_t raw_length = (static_cast<uint32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
+    *length = raw_length / 1000000.0f;
     return SUCCESS;
 }
 

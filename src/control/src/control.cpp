@@ -11,12 +11,28 @@
 
 // #define DEBUG   //Uncomment to enable Debugging
 
+// ---------------------------------------------------------------------------
+// Robot Parameters
+// ---------------------------------------------------------------------------
+#define AXEL_LENGTH_IN_MM (590)           // As per the hardware manual
+#define WHEEL_DIA_IN_MM (260)             // As per the hardware manual
+#define TIRE_RUBBER_THREAD_DIA_IN_MM (80) // As per the hardware manual
+
+// ---------------------------------------------------------------------------
+// Libraries and objects
+// ---------------------------------------------------------------------------
 // User Defined Library
 #include <ros_callbacks.hpp>
 
 // Global Objects
 serial::Serial *robotPort = nullptr;
 serial::Serial *imuPort = nullptr;
+float axel_length_m;
+float wheel_dia_m;
+
+// ---------------------------------------------------------------------------
+// Main Code
+// ---------------------------------------------------------------------------
 
 int main(int argc, char **argv)
 {
