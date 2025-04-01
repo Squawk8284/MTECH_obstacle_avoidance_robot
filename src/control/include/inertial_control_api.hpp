@@ -94,9 +94,9 @@ bool get3AxisMagnetometer(serial::Serial *s, float *xMag, float *yMag, float *zM
     int16_t rawYMag = (static_cast<int16_t>(buffer[3] << 8)) | (buffer[2]);
     int16_t rawZMag = (static_cast<int16_t>(buffer[5] << 8)) | (buffer[4]);
 
-    *xMag = rawXMag * (0.01 / 57.0);
-    *yMag = rawYMag * (0.01 / 57.0);
-    *zMag = rawZMag * (0.01 / 57.0);
+    *xMag = rawXMag / 1100.0;
+    *yMag = rawYMag / 1100.0;
+    *zMag = rawZMag / 980.0;
     return SUCCESS;
 }
 
@@ -157,6 +157,120 @@ bool getZAxisAccelerometer(serial::Serial *s, float *zAccel)
     int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
 
     *zAccel = raw_data * (0.004 / 16) * g_to_m_s_2;
+    return SUCCESS;
+}
+
+/**
+ * @brief Get X Axis Gyroscope Data (deg/sec)
+ *
+ * @param s Pointer to serial object
+ * @param xGyro Pointer to x-axis Gyroscope data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool getXAxisGyroscope(serial::Serial *s, float *xGyro)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getXAxisGyroscope, 0x11, 0x01), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    *xGyro = raw_data * (0.01 / 57.0);
+    return SUCCESS;
+}
+
+/**
+ * @brief Get Y Axis Gyroscope Data (deg/sec)
+ *
+ * @param s Pointer to serial object
+ * @param yGyro Pointer to y-axis Gyroscope data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool getYAxisGyroscope(serial::Serial *s, float *yGyro)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getYAxisGyroscope, 0x11, 0x02), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    *yGyro = raw_data * (0.01 / 57.0);
+    return SUCCESS;
+}
+
+/**
+ * @brief Get Z Axis Gyroscope Data (deg/sec)
+ *
+ * @param s Pointer to serial object
+ * @param zGyro Pointer to z-axis Gyroscope data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool getZAxisGyroscope(serial::Serial *s, float *zGyro)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getZAxisGyroscope, 0x11, 0x03), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    *zGyro = raw_data * (0.01 / 57.0);
+    return SUCCESS;
+}
+
+/**
+ * @brief Get X Axis Magnetometer data (Gauss)
+ * 
+ * @param s Pointer to serial object
+ * @param xMag Pointer to x-axis magnetometer data
+ * @return true if success
+ * @return false if failed
+ */
+bool getXAxisMagnetometer(serial::Serial *s, float *xMag)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getXAxisMagnetometer, 0x12, 0x01), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    *xMag = raw_data / (1100.0);
+    return SUCCESS;
+}
+
+/**
+ * @brief Get Y Axis Magnetometer data (Gauss)
+ * 
+ * @param s Pointer to serial object
+ * @param yMag Pointer to y-axis magnetometer data
+ * @return true if success
+ * @return false if failed
+ */
+bool getYAxisMagnetometer(serial::Serial *s, float *yMag)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getYAxisMagnetometer, 0x12, 0x02), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    *yMag = raw_data / (1100.0);
+    return SUCCESS;
+}
+
+/**
+ * @brief Get Z Axis Magnetometer data (Gauss)
+ * 
+ * @param s Pointer to serial object
+ * @param zMag Pointer to z-axis magnetometer data
+ * @return true if success
+ * @return false if failed
+ */
+bool getZAxisMagnetometer(serial::Serial *s, float *zMag)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getZAxisMagnetometer, 0x12, 0x03), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    *zMag = raw_data / (980.0);
     return SUCCESS;
 }
 
