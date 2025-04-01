@@ -53,4 +53,73 @@ void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
     setRobotDirection(robotPort, FORWARD);
 }
 
+void computeGravityAndRemove(double ax, double ay, double az, double &g_x, double &g_y, double &g_z)
+{
+    // Compute gravity vector
+    double g = sqrt(ax * ax + ay * ay + az * az);
+
+    g_x = g * sin(atan2(-ax, sqrt(ay * ay + az * az)));                       // g_x
+    g_y = -g * sin(atan2(ay, az)) * cos(atan2(-ax, sqrt(ay * ay + az * az))); // g_y
+    g_z = g * cos(atan2(ay, az)) * cos(atan2(-ax, sqrt(ay * ay + az * az)));  // g_z
+}
+
+double computeYaw(double mx, double my, double mz, double roll, double pitch)
+{
+    double yaw = 0.0;
+
+    if (mx != 0 || my != 0 || mz != 0)
+    { // Ensure magnetometer data is valid
+        // Correct magnetometer readings for roll and pitch
+        double m_x = mx * cos(pitch) + mz * sin(pitch);
+        double m_y = mx * sin(roll) * sin(pitch) + my * cos(roll) - mz * sin(roll) * cos(pitch);
+
+        // Compute yaw
+        yaw = atan2(-m_y, m_x);
+    }
+    return yaw;
+}
+
+void computeRollPitch(double ax, double ay, double az, double &roll, double &pitch)
+{
+    // Roll and Pitch using accelerometer
+    roll = atan2(ay, az);
+    pitch = atan2(-ax, sqrt(ay * ay + az * az));
+}
+
+bool getYPRG(double *yaw, double *pitch, double *roll, double gravity[3])
+{
+    float xAccel, yAccel, zAccel;
+    float xGyro, yGyro, zGyro;
+    float xMag, yMag, zMag;
+
+    if (!get3AxisAccelorometer(robotPort, &xAccel, &yAccel, &zAccel))
+        return FAILURE;
+    if (!get3AxisGyroscope(robotPort, &xGyro, &yGyro, &zGyro))
+        return FAILURE;
+    if (!get3AxisMagnetometer(robotPort, &xMag, &yMag, &zMag))
+        return FAILURE;
+
+    static double prevRoll = 0.0, prevPitch = 0.0, prevYaw = 0.0;
+
+    double tempRoll, tempPitch;
+    computeRollPitch(ax, ay, az, tempRoll, tempPitch);
+    *roll = ALPHA * (prevRoll + gx) + (1 - ALPHA) * tempRoll;
+    *pitch = ALPHA * (prevPitch + gy) + (1 - ALPHA) * tempPitch;
+
+    prevRoll = *roll;
+    prevPitch = *pitch;
+
+    *yaw = computeYaw(mx, my, mz, *roll, *pitch);
+    *yaw = ALPHA * (prevYaw + gz) + (1 - ALPHA) * (*yaw);
+    prevYaw = *yaw;
+
+    double g_x, g_y, g_z;
+    computeGravityAndRemove(ax, ay, az, g_x, g_y, g_z);
+    gravity[0] = g_x;
+    gravity[1] = g_y;
+    gravity[2] = g_z;
+
+    return SUCCESS;
+}
+
 #endif //__USER_DEFINED__FUNCTIONS__

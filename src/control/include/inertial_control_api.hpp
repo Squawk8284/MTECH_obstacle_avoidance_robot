@@ -219,7 +219,7 @@ bool getZAxisGyroscope(serial::Serial *s, float *zGyro)
 
 /**
  * @brief Get X Axis Magnetometer data (Gauss)
- * 
+ *
  * @param s Pointer to serial object
  * @param xMag Pointer to x-axis magnetometer data
  * @return true if success
@@ -238,7 +238,7 @@ bool getXAxisMagnetometer(serial::Serial *s, float *xMag)
 
 /**
  * @brief Get Y Axis Magnetometer data (Gauss)
- * 
+ *
  * @param s Pointer to serial object
  * @param yMag Pointer to y-axis magnetometer data
  * @return true if success
@@ -257,7 +257,7 @@ bool getYAxisMagnetometer(serial::Serial *s, float *yMag)
 
 /**
  * @brief Get Z Axis Magnetometer data (Gauss)
- * 
+ *
  * @param s Pointer to serial object
  * @param zMag Pointer to z-axis magnetometer data
  * @return true if success
