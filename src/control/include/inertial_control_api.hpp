@@ -16,14 +16,158 @@
 
 #define BUZZER_ON (0x01)
 #define BUZZER_OFF (0x00)
+
+constexpr double g_to_m_s_2 = 9.81;
 // ---------------------------------------------------------------------------
 // Internal IMU Sensor Commands
 // ---------------------------------------------------------------------------
+
+/**
+ * @brief Get 3 Axis Accelerometer data (m^s2)
+ *
+ * @param s Pointer to serial object
+ * @param xAccel Pointer to X-axis Accelerometer data
+ * @param yAccel Pointer to y-axis Accelerometer data
+ * @param zAccel Pointer to z-axis Accelerometer data
+ * @return true if Success
+ * @return false if Failed
+ */
 bool get3AxisAccelorometer(serial::Serial *s, float *xAccel, float *yAccel, float *zAccel)
 {
-    return true;
+    uint8_t buffer[6];
+    if (!executeCommand(s, CMD(get3AxisAccelorometer, 0x05, 0x05), nullptr, 0, ReturnPayload(6), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t rawXAccel = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    int16_t rawYAccel = (static_cast<int16_t>(buffer[3] << 8)) | (buffer[2]);
+    int16_t rawZAccel = (static_cast<int16_t>(buffer[5] << 8)) | (buffer[4]);
+
+    *xAccel = rawXAccel * (0.004 / 16) * g_to_m_s_2;
+    *yAccel = rawYAccel * (0.004 / 16) * g_to_m_s_2;
+    *zAccel = rawZAccel * (0.004 / 16) * g_to_m_s_2;
+    return SUCCESS;
 }
 
+/**
+ * @brief Get 3 Axis Gyroscope data (deg/sec)
+ *
+ * @param s Pointer to serial object
+ * @param xGyro Pointer to X-axis Gyroscope data
+ * @param yGyro Pointer to y-axis Gyroscope data
+ * @param zGyro Pointer to z-axis Gyroscope data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool get3AxisGyroscope(serial::Serial *s, float *xGyro, float *yGyro, float *zGyro)
+{
+    uint8_t buffer[6];
+    if (!executeCommand(s, CMD(get3AxisGyroscope, 0x05, 0x06), nullptr, 0, ReturnPayload(6), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t rawXGyro = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    int16_t rawYGyro = (static_cast<int16_t>(buffer[3] << 8)) | (buffer[2]);
+    int16_t rawZGyro = (static_cast<int16_t>(buffer[5] << 8)) | (buffer[4]);
+
+    *xGyro = rawXGyro * (0.01 / 57.0);
+    *yGyro = rawYGyro * (0.01 / 57.0);
+    *zGyro = rawZGyro * (0.01 / 57.0);
+    return SUCCESS;
+}
+
+/**
+ * @brief Get 3 Axis Gyroscope data (Gauss)
+ *
+ * @param s Pointer to serial object
+ * @param xMag Pointer to X-axis Magnetometer data
+ * @param yMag Pointer to y-axis Magnetometer data
+ * @param zMag Pointer to z-axis Magnetometer data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool get3AxisMagnetometer(serial::Serial *s, float *xMag, float *yMag, float *zMag)
+{
+    uint8_t buffer[6];
+    if (!executeCommand(s, CMD(get3AxisMagnetometer, 0x05, 0x07), nullptr, 0, ReturnPayload(6), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t rawXMag = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+    int16_t rawYMag = (static_cast<int16_t>(buffer[3] << 8)) | (buffer[2]);
+    int16_t rawZMag = (static_cast<int16_t>(buffer[5] << 8)) | (buffer[4]);
+
+    *xMag = rawXMag * (0.01 / 57.0);
+    *yMag = rawYMag * (0.01 / 57.0);
+    *zMag = rawZMag * (0.01 / 57.0);
+    return SUCCESS;
+}
+
+/**
+ * @brief Get X Axis Accelerometer Data (m/s^2)
+ *
+ * @param s Pointer to serial Object
+ * @param xAccel Pointer to X-axis Accelerometer data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool getXAxisAccelerometer(serial::Serial *s, float *xAccel)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getXAxisAccelerometer, 0x10, 0x01), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+
+    *xAccel = raw_data * (0.004 / 16) * g_to_m_s_2;
+    return SUCCESS;
+}
+
+/**
+ * @brief Get Y Axis Accelerometer Data (m/s^2)
+ *
+ * @param s Pointer to serial Object
+ * @param yAccel Pointer to Y-axis Accelerometer data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool getYAxisAccelerometer(serial::Serial *s, float *yAccel)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getYAxisAccelerometer, 0x10, 0x02), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+
+    *yAccel = raw_data * (0.004 / 16) * g_to_m_s_2;
+    return SUCCESS;
+}
+
+/**
+ * @brief Get Z Axis Accelerometer Data (m/s^2)
+ *
+ * @param s Pointer to serial Object
+ * @param zAccel Pointer to Z-axis Accelerometer data
+ * @return true if Success
+ * @return false if Failed
+ */
+bool getZAxisAccelerometer(serial::Serial *s, float *zAccel)
+{
+    uint8_t buffer[2];
+    if (!executeCommand(s, CMD(getZAxisAccelerometer, 0x10, 0x03), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    int16_t raw_data = (static_cast<int16_t>(buffer[1] << 8)) | (buffer[0]);
+
+    *zAccel = raw_data * (0.004 / 16) * g_to_m_s_2;
+    return SUCCESS;
+}
+
+/**
+ * @brief Set the Buzzer
+ *
+ * @param s Pointer to Serial Object
+ * @param buzzer BUZZER_ON=0x01 or BUZZER_OFF = 0x00
+ * @return true
+ * @return false
+ */
 bool setBuzzer(serial::Serial *s, uint8_t buzzer)
 {
     if (!executeCommand(s, CMD(SetBuzzer, 0x30), &buzzer, sizeof(buzzer), ReturnPayload(0), nullptr, 0))
