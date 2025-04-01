@@ -29,6 +29,8 @@ extern serial::Serial *imuPort;
 extern float axel_length_m;
 extern float wheel_dia_m;
 
+constexpr double ALPHA = 0.98;
+
 // ---------------------------------------------------------------------------
 // Function Defination
 // ---------------------------------------------------------------------------
@@ -102,19 +104,19 @@ bool getYPRG(double *yaw, double *pitch, double *roll, double gravity[3])
     static double prevRoll = 0.0, prevPitch = 0.0, prevYaw = 0.0;
 
     double tempRoll, tempPitch;
-    computeRollPitch(ax, ay, az, tempRoll, tempPitch);
-    *roll = ALPHA * (prevRoll + gx) + (1 - ALPHA) * tempRoll;
-    *pitch = ALPHA * (prevPitch + gy) + (1 - ALPHA) * tempPitch;
+    computeRollPitch(xAccel, yAccel, zAccel, tempRoll, tempPitch);
+    *roll = ALPHA * (prevRoll + xGyro) + (1 - ALPHA) * tempRoll;
+    *pitch = ALPHA * (prevPitch + yGyro) + (1 - ALPHA) * tempPitch;
 
     prevRoll = *roll;
     prevPitch = *pitch;
 
-    *yaw = computeYaw(mx, my, mz, *roll, *pitch);
-    *yaw = ALPHA * (prevYaw + gz) + (1 - ALPHA) * (*yaw);
+    *yaw = computeYaw(xMag, yMag, zMag, *roll, *pitch);
+    *yaw = ALPHA * (prevYaw + zGyro) + (1 - ALPHA) * (*yaw);
     prevYaw = *yaw;
 
     double g_x, g_y, g_z;
-    computeGravityAndRemove(ax, ay, az, g_x, g_y, g_z);
+    computeGravityAndRemove(xAccel, yAccel, zAccel, g_x, g_y, g_z);
     gravity[0] = g_x;
     gravity[1] = g_y;
     gravity[2] = g_z;
