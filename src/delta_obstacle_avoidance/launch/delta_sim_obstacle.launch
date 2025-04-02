@@ -1,6 +1,0 @@
-<launch>
-  <arg name="cmd_vel" default="/cmd_vel"/>
-  <param name="cmd_vel_topic_name" value="$(arg cmd_vel)"/>
-
-  <node name="delta_drive" pkg="delta_obstacle_avoidance" type="delta_drive" required="true" output="screen"/>
-</launch>

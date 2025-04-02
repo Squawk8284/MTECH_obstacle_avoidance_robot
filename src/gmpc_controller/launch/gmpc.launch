@@ -1,7 +1,4 @@
 <launch>
-    <!-- Launch the plotting node (Python script) -->
-    <node name="plot_actual_path" pkg="gmpc_controller" type="plot_actual_path.py" output="screen"/>
-
     <!-- GMPC node for the robot -->
     <node name="gmpc_controller" pkg="gmpc_controller" type="gmpc_controller_node" output="screen"/>
 </launch>
