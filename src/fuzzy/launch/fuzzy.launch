@@ -1,6 +1,0 @@
-<launch>
-  <!-- Launch the fuzzy controller node -->
-  <node name="fuzzy_node" pkg="fuzzy" type="fuzzy_node.py" output="screen">
-    <rosparam file="$(find fuzzy)/config/fuzzy_params.yaml" command="load" />
-  </node>
-</launch>

@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find control)/launch/control.launch" />
+    <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_keyboard" output="screen"/>
+</launch>

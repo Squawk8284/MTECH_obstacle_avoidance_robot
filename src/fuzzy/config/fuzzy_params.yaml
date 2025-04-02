@@ -1,6 +1,0 @@
-# Parameters for the fuzzy_controller_node
-
-num_samples: 25          # Number of samples along the Bezier curve
-threshold: 0.05         # Distance (in meters) to consider a waypoint reached
-rate: 1                 # Control loop rate (Hz)
-initial_velocity: 0.0001 # Initial robot velocity (m/s)

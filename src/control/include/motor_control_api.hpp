@@ -45,7 +45,7 @@
 bool setSafetyTimeout(serial::Serial *s, float timeout)
 {
     _DEBUG(PrintLn("Setting the Safety Timeout to ", static_cast<int8_t>(timeout), "s"));
-    int8_t timeoutByte = static_cast<int8_t>(timeout);
+    uint8_t timeoutByte = static_cast<uint8_t>(timeout);
     if (!executeCommand(s, CMD(SetSafetyTimeout, 0x7A, 0x01), &timeoutByte, sizeof(timeoutByte), ReturnPayload(0), nullptr, 0))
     {
         return FAILURE;
@@ -65,7 +65,7 @@ bool setSafetyTimeout(serial::Serial *s, float timeout)
  */
 bool getSafetyTimeout(serial::Serial *s, float *safetyTimeout)
 {
-    int8_t buffer = 0;
+    uint8_t buffer = 0;
     if (!executeCommand(s, CMD(GetSafetyTimeout, 0x7A, 0x02), nullptr, 0, ReturnPayload(1), &buffer, sizeof(buffer)))
         return FAILURE;
 
@@ -196,7 +196,7 @@ bool setLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
  */
 bool getLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
 {
-    int8_t buffer[2] = {0}; // expected payload: 2 bytes
+    uint8_t buffer[2] = {0}; // expected payload: 2 bytes
     if (!executeCommand(s, CMD(GetLeftMotorVelocity, 0x9A, 0x00), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
         return FAILURE;
     *velocity = (static_cast<int16_t>(buffer[0]) << 8) | buffer[1]; // Re-arranging the MSB and LSB
@@ -213,10 +213,10 @@ bool getLeftMotorVelocity(serial::Serial *s, int16_t *velocity)
  */
 bool setRightMotorVelocity(serial::Serial *s, int16_t velocity)
 {
-    uint8_t data[2];
-    data[0] = static_cast<uint8_t>(velocity >> 8);   // MSB
-    data[1] = static_cast<uint8_t>(velocity & 0xFF); // LSB
-    if (!executeCommand(s, CMD(SetRightMotorVelocity, 0x96), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+    uint8_t buffer[2];
+    buffer[0] = static_cast<uint8_t>(velocity >> 8);   // MSB
+    buffer[1] = static_cast<uint8_t>(velocity & 0xFF); // LSB
+    if (!executeCommand(s, CMD(SetRightMotorVelocity, 0x96), buffer, sizeof(buffer), ReturnPayload(0), nullptr, 0))
         return FAILURE;
     return SUCCESS;
 }
@@ -250,11 +250,11 @@ bool getRightMotorVelocity(serial::Serial *s, int16_t *velocity)
  */
 bool setLeftMotorVelocity_mps(serial::Serial *s, float velocity)
 {
-    uint16_t vel_mm = static_cast<uint16_t>((velocity) * 1000);
-    uint8_t data[2];
-    data[0] = static_cast<uint8_t>(vel_mm >> 8);
-    data[1] = static_cast<uint8_t>(vel_mm & 0xFF);
-    if (!executeCommand(s, CMD(SetLeftMotorVelocity_mps, 0x70), data, sizeof(data), ReturnPayload(0), nullptr, 0))
+    int16_t vel_mm = static_cast<int16_t>((velocity) * 1000);
+    uint8_t buffer[2];
+    buffer[0] = static_cast<uint8_t>(vel_mm >> 8);
+    buffer[1] = static_cast<uint8_t>(vel_mm & 0xFF);
+    if (!executeCommand(s, CMD(SetLeftMotorVelocity_mps, 0x70), buffer, sizeof(buffer), ReturnPayload(0), nullptr, 0))
         return FAILURE;
     return SUCCESS;
 }
