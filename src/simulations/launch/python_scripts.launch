@@ -1,5 +1,6 @@
 <launch>
 
 <!-- Launch the plotting node (Python script) -->
-    <node name="plot_actual_path" pkg="simulations" type="plot_actual_path.py" output="screen"/>
+    <!-- <node name="plot_actual_path" pkg="simulations" type="plot_actual_path.py" output="screen"/> -->
+    <node name="Navigation" pkg="simulations" type="Navigation.py" output="screen"/>
 </launch>
