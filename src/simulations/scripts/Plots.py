@@ -19,7 +19,7 @@ class OdometryPlotter:
         self.ax = self.fig.add_subplot(111, projection='3d')
 
         # Set save path: simulations/plots
-        package_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+        package_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..','..','..')
         self.save_dir = os.path.join(package_path, 'plots')
         os.makedirs(self.save_dir, exist_ok=True)
 
