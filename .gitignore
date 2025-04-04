@@ -4,3 +4,6 @@ build
 devel
 .catkin_workspace
 .prettierrc
+# ignore pycache
+__pycache__/
+**/.vscode/
