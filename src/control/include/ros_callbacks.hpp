@@ -14,6 +14,10 @@
 
 #include <user_defined_functions.hpp>
 
+// ---------------------------------------------------------------------------
+// Functions
+// ---------------------------------------------------------------------------
+
 void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg)
 {
     float linear_velocity = msg->linear.x;   // Extract linear velocity

@@ -377,7 +377,7 @@ def Path_callback(msg):
     # plt.savefig(filename)
     # graph_count += 1
     # plt.close()
-    rospy.loginfo(len(unique_obstacles))
+    # rospy.loginfo(len(unique_obstacles))
 
 def Odom_callback(msg):
 
@@ -397,7 +397,7 @@ rospy.loginfo("Logger started")
 rospy.on_shutdown(lambda: rospy.loginfo("Logger shutdown complete"))
 
 rospy.Subscriber('/odom', Odometry, Odom_callback)
-path_planner = TLBO(start=start, end=(4,3), bounds=[(0,0),(0,5.2),(5.65,5.2),(5.65,0)])
+path_planner = TLBO(start=start, end=(6.9,4.2), bounds=[(0,0),(0,5.2),(5.65,5.2),(5.65,0)])
 rospy.Subscriber('/occupancy_map/2D_occupancy_map', OccupancyGrid, Path_callback)
 
 rospy.spin()

@@ -29,6 +29,10 @@ serial::Serial *robotPort = nullptr;
 serial::Serial *imuPort = nullptr;
 float axel_length_m;
 float wheel_dia_m;
+uint16_t CountsPerWheelRevolution;
+uint16_t WheelRevPerCounts;
+
+Pose robotPose;
 
 // ---------------------------------------------------------------------------
 // Main Code
@@ -45,8 +49,18 @@ int main(int argc, char **argv)
         ros::NodeHandle nh;
 
         ros::Subscriber sub = nh.subscribe("/cmd_vel", 10, cmdVelCallback);
+        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 50);
+        tf2_ros::TransformBroadcaster odom_broadcaster;
 
-        ros::spin();
+        ROS_INFO("Waiting for 2 seconds...");
+        ros::Duration(2.0).sleep(); // Sleep for 2 seconds
+        ROS_INFO("Resuming execution!");
+
+        while (ros::ok())
+        {
+            UpdateOdometry(odom_pub, odom_broadcaster);
+            ros::spinOnce();
+        }
     }
     catch (const std::exception &e)
     {

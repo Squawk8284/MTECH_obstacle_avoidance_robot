@@ -5,16 +5,16 @@ depth_image_topic: /camera/depth/image_raw
 pose_topic: /CERLAB/quadcopter/pose
 odom_topic: /CERLAB/quadcopter/odom
 # pose_topic: /mavros/local_position/pose
-# odom_topic: /mavros/local_position/odom
+# odom_topic: /odom
 
 # robot size
 robot_size: [0.5, 0.5, 0.3]
 
 # Camera Parameters
 depth_intrinsics: [554.254691191187, 554.254691191187, 320.5, 240.5] # fx,  fy, cx, cy
-depth_scale_factor: 10 # 1000 for Intel Realsense Camera
-depth_min_value: 0.5
-depth_max_value: 5.0
+depth_scale_factor: 1000 # 1000 for Intel Realsense Camera
+depth_min_value: 0.05
+depth_max_value: 1.5
 depth_filter_margin: 2 # filter
 depth_skip_pixel: 2 # filter
 image_cols: 640
