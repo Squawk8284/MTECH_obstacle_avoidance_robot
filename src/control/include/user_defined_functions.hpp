@@ -64,12 +64,12 @@ void init()
     getAxleLength_m(robotPort, &axel_length_m);
     getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
     WheelRevPerCounts = 1 / CountsPerWheelRevolution;
-    PrintLn("Enter Starting X Pos:");
-    std::cin >> robotPose.X;
-    PrintLn("Enter Starting Y Pos:");
-    std::cin >> robotPose.Y;
-    PrintLn("Enter Starting 0 Pos:");
-    std::cin >> robotPose.Theta;
+    // PrintLn("Enter Starting X Pos:");
+    // std::cin >> robotPose.X;
+    // PrintLn("Enter Starting Y Pos:");
+    // std::cin >> robotPose.Y;
+    // PrintLn("Enter Starting 0 Pos:");
+    // std::cin >> robotPose.Theta;
 }
 void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
 {

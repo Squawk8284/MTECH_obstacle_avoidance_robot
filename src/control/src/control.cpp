@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 
         while (ros::ok())
         {
-            UpdateOdometry(odom_pub, odom_broadcaster);
+            // UpdateOdometry(odom_pub, odom_broadcaster);
             ros::spinOnce();
         }
     }
