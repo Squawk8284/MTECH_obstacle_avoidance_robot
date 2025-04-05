@@ -27,10 +27,10 @@ class TLBO():
         self.num_of_learners = 15
         self.delta = 0.54
         self.sigma = 2
-        self.iterations = 2
+        self.iterations = 3
         self.w1 = 0.65
         self.w2 = 0.35
-        self.path_points = 50
+        self.path_points = 25
         self.t = np.linspace(0,1,self.path_points)
         self.bernstein = [self.__bernstein_poly(i, self.subjects+2-1, self.t) for i in range(self.subjects+2)]
         self.theta = None

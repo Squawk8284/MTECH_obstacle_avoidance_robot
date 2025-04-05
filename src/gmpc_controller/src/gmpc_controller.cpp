@@ -126,7 +126,7 @@ public:
                 closest_idx = i;
             }
         }
-        int lookahead = 5;
+        int lookahead = 1;
         int ref_idx = min(closest_idx + lookahead, (int)current_path.poses.size() - 1);
         ref_state(0) = current_path.poses[ref_idx].pose.position.x;
         ref_state(1) = current_path.poses[ref_idx].pose.position.y;
