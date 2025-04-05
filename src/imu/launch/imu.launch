@@ -1,4 +1,0 @@
-<launch>
-    <!-- Imu node for the robot -->
-    <node name="imu" pkg="imu" type="imu_node" output="screen"/>
-</launch>

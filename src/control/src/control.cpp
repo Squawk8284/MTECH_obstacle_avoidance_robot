@@ -47,9 +47,9 @@ int main(int argc, char **argv)
         init();
         ros::init(argc, argv, "control");
         ros::NodeHandle nh;
-
+        ros::Rate loopRate(50);
         ros::Subscriber sub = nh.subscribe("/cmd_vel", 10, cmdVelCallback);
-        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 50);
+        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 10);
         tf2_ros::TransformBroadcaster odom_broadcaster;
 
         ROS_INFO("Waiting for 2 seconds...");
@@ -58,8 +58,9 @@ int main(int argc, char **argv)
 
         while (ros::ok())
         {
-            // UpdateOdometry(odom_pub, odom_broadcaster);
+            UpdateOdometry(odom_pub, odom_broadcaster);
             ros::spinOnce();
+            loopRate.sleep();
         }
     }
     catch (const std::exception &e)
