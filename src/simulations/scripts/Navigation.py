@@ -25,7 +25,7 @@ class TLBO():
         self.obstacles = None
         self.subjects = 2
         self.num_of_learners = 15
-        self.delta = 0.58
+        self.delta = 0.54
         self.sigma = 2
         self.iterations = 2
         self.w1 = 0.65
@@ -377,7 +377,7 @@ def Path_callback(msg):
     # plt.savefig(filename)
     # graph_count += 1
     # plt.close()
-    rospy.loginfo(len(unique_obstacles))
+    # rospy.loginfo(len(unique_obstacles))
 
 def Odom_callback(msg):
 
@@ -397,7 +397,7 @@ rospy.loginfo("Logger started")
 rospy.on_shutdown(lambda: rospy.loginfo("Logger shutdown complete"))
 
 rospy.Subscriber('/odom', Odometry, Odom_callback)
-path_planner = TLBO(start=start, end=(4,3), bounds=[(0,0),(0,5.2),(5.65,5.2),(5.65,0)])
+path_planner = TLBO(start=start, end=(2.4,2.9), bounds=[(0,0),(0,3.5),(3,3.5),(3,0)])
 rospy.Subscriber('/occupancy_map/2D_occupancy_map', OccupancyGrid, Path_callback)
 
 rospy.spin()
