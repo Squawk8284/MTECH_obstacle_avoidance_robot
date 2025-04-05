@@ -20,17 +20,23 @@ class RecorderNode:
             'odom': None,
             'path_topic': None,
         }
+
+        # Flattened path as string for saving to CSV
+        self.flattened_path_str = None
+
         # Buffer of records
         self.records = []
+
         # Lock for thread safety
         self.lock = threading.Lock()
+
         # Flag: have we ever received a cmd_vel?
         self.recording_enabled = False
 
         # Subscribers
-        rospy.Subscriber('/cmd_vel', Twist,    self.cb_cmd_vel,  queue_size=1)
-        rospy.Subscriber('/odom', Odometry,    self.cb_odom,     queue_size=1)
-        rospy.Subscriber('/path_topic', Path,  self.cb_path,     queue_size=1)
+        rospy.Subscriber('/cmd_vel', Twist, self.cb_cmd_vel, queue_size=1)
+        rospy.Subscriber('/odom', Odometry, self.cb_odom, queue_size=1)
+        rospy.Subscriber('/path_topic', Path, self.cb_path, queue_size=1)
 
         rospy.on_shutdown(self.on_shutdown)
 
@@ -55,6 +61,11 @@ class RecorderNode:
     def cb_path(self, msg: Path):
         with self.lock:
             self.latest['path_topic'] = msg
+            # Flatten the full path to a single string: "x1,y1;x2,y2;..."
+            self.flattened_path_str = ";".join([
+                f"{pose.pose.position.x:.3f},{pose.pose.position.y:.3f}"
+                for pose in msg.poses
+            ])
 
     def _maybe_record(self):
         """Record one sample if recording is enabled."""
@@ -64,7 +75,6 @@ class RecorderNode:
         ts = rospy.Time.now().to_sec()
         lv = self.latest['cmd_vel']
         od = self.latest['odom']
-        pt = self.latest['path_topic']
 
         row = {
             'time': ts,
@@ -84,7 +94,9 @@ class RecorderNode:
             'odom_ori_z': od.pose.pose.orientation.z if od else None,
             'odom_ori_w': od.pose.pose.orientation.w if od else None,
             # path_topic: number of poses
-            'path_topic_count': len(pt.poses) if pt else None,
+            'path_topic_count': len(self.latest['path_topic'].poses) if self.latest['path_topic'] else None,
+            # NEW: flattened path string
+            'path_topic_points': self.flattened_path_str if self.flattened_path_str else '',
         }
         self.records.append(row)
 
@@ -130,10 +142,8 @@ class RecorderNode:
         except Exception as e:
             rospy.logerr(f"Failed to write CSV file: {e}")
 
-        # (Optional) you can trigger plot generation here or leave it for a separate script.
-
 if __name__ == '__main__':
     try:
-        RecorderNode(goal_tolerance=0.1)
+        RecorderNode(goal_tolerance=0.2)
     except rospy.ROSInterruptException:
         pass
