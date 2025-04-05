@@ -1,75 +1,139 @@
-import os
+#!/usr/bin/env python3
 import rospy
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry, Path
+import pandas as pd
+from datetime import datetime
+import threading
+import os
+import rospkg
+import math
 
-class OdometryPlotter:
-    def __init__(self):
-        self.x_data = []
-        self.y_data = []
-        self.z_data = []  # Time (or steps) since motion started
+class RecorderNode:
+    def __init__(self, goal_tolerance=0.1):
+        rospy.init_node('topic_recorder', anonymous=True)
+        self.goal_tolerance = goal_tolerance
 
-        self.active = False
-        self.start_time = None
+        # Storage for the latest message of each type
+        self.latest = {
+            'cmd_vel': None,
+            'odom': None,
+            'path_topic': None,
+        }
+        # Buffer of records
+        self.records = []
+        # Lock for thread safety
+        self.lock = threading.Lock()
+        # Flag: have we ever received a cmd_vel?
+        self.recording_enabled = False
 
-        # Set up 3D plot
-        self.fig = plt.figure()
-        self.ax = self.fig.add_subplot(111, projection='3d')
+        # Subscribers
+        rospy.Subscriber('/cmd_vel', Twist,    self.cb_cmd_vel,  queue_size=1)
+        rospy.Subscriber('/odom', Odometry,    self.cb_odom,     queue_size=1)
+        rospy.Subscriber('/path_topic', Path,  self.cb_path,     queue_size=1)
 
-        # Set save path: simulations/plots
-        package_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..','..','..')
-        self.save_dir = os.path.join(package_path, 'plots')
-        os.makedirs(self.save_dir, exist_ok=True)
+        rospy.on_shutdown(self.on_shutdown)
 
-        # ROS Subscribers
-        self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
-        self.cmd_vel_sub = rospy.Subscriber("/cmd_vel", Twist, self.cmd_vel_callback)
+        rospy.loginfo("RecorderNode started, waiting for /cmd_vel to begin recording...")
+        rospy.spin()
 
-        # Register shutdown hook
-        rospy.on_shutdown(self.save_plot)
+    def cb_cmd_vel(self, msg: Twist):
+        with self.lock:
+            self.latest['cmd_vel'] = msg
+            if not self.recording_enabled:
+                rospy.loginfo("First /cmd_vel received, starting recording.")
+            self.recording_enabled = True
+            self._maybe_record()
 
-    def cmd_vel_callback(self, msg):
-        if not self.active:
-            self.active = True
-            self.start_time = rospy.Time.now()
-            rospy.loginfo("Motion started — recording odometry data.")
+    def cb_odom(self, msg: Odometry):
+        with self.lock:
+            self.latest['odom'] = msg
+            if self.recording_enabled:
+                self._check_goal_and_shutdown()
+                self._maybe_record()
 
-    def odom_callback(self, msg):
-        if not self.active:
+    def cb_path(self, msg: Path):
+        with self.lock:
+            self.latest['path_topic'] = msg
+
+    def _maybe_record(self):
+        """Record one sample if recording is enabled."""
+        if not self.recording_enabled:
             return
 
-        x = msg.pose.pose.position.x
-        y = msg.pose.pose.position.y
-        t = (msg.header.stamp - self.start_time).to_sec()
+        ts = rospy.Time.now().to_sec()
+        lv = self.latest['cmd_vel']
+        od = self.latest['odom']
+        pt = self.latest['path_topic']
 
-        self.x_data.append(x)
-        self.y_data.append(y)
-        self.z_data.append(t)
+        row = {
+            'time': ts,
+            # cmd_vel
+            'cmd_lin_x': lv.linear.x,
+            'cmd_lin_y': lv.linear.y,
+            'cmd_lin_z': lv.linear.z,
+            'cmd_ang_x': lv.angular.x,
+            'cmd_ang_y': lv.angular.y,
+            'cmd_ang_z': lv.angular.z,
+            # odom pose
+            'odom_pos_x': od.pose.pose.position.x if od else None,
+            'odom_pos_y': od.pose.pose.position.y if od else None,
+            'odom_pos_z': od.pose.pose.position.z if od else None,
+            'odom_ori_x': od.pose.pose.orientation.x if od else None,
+            'odom_ori_y': od.pose.pose.orientation.y if od else None,
+            'odom_ori_z': od.pose.pose.orientation.z if od else None,
+            'odom_ori_w': od.pose.pose.orientation.w if od else None,
+            # path_topic: number of poses
+            'path_topic_count': len(pt.poses) if pt else None,
+        }
+        self.records.append(row)
 
-    def save_plot(self):
-        if not self.active or not self.x_data:
-            rospy.logwarn("No motion data recorded. Plot not saved.")
+    def _check_goal_and_shutdown(self):
+        """If odom is within tolerance of the last path_topic pose, shut down."""
+        od = self.latest['odom']
+        pt = self.latest['path_topic']
+        if od and pt and pt.poses:
+            goal = pt.poses[-1].pose.position
+            dx = od.pose.pose.position.x - goal.x
+            dy = od.pose.pose.position.y - goal.y
+            dist = math.hypot(dx, dy)
+            if dist <= self.goal_tolerance:
+                rospy.loginfo(f"Goal reached (distance {dist:.3f} ≤ {self.goal_tolerance}). Saving and shutting down.")
+                rospy.signal_shutdown('goal reached')
+
+    def on_shutdown(self):
+        """Called on rospy shutdown; write CSV into its own timestamped subfolder."""
+        if not self.recording_enabled or not self.records:
+            rospy.loginfo("No data recorded. Exiting without creating files.")
             return
 
-        self.ax.clear()
+        # Prepare DataFrame
+        df = pd.DataFrame(self.records)
 
-        # Plot odometry path only
-        self.ax.plot3D(self.x_data, self.y_data, self.z_data,
-                       label="Odometry Path", color='blue')
+        # Resolve package path and ensure base plots/ exists
+        rospack = rospkg.RosPack()
+        pkg_path = rospack.get_path('simulations')
+        base_plots_dir = os.path.join(pkg_path, 'plots')
+        os.makedirs(base_plots_dir, exist_ok=True)
 
-        self.ax.set_xlabel("X")
-        self.ax.set_ylabel("Y")
-        self.ax.set_zlabel("Time (s)")
-        self.ax.set_title("3D Odometry Path")
-        self.ax.legend()
+        # Create timestamped subfolder
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        session_dir = os.path.join(base_plots_dir, f"record_{timestamp}")
+        os.makedirs(session_dir, exist_ok=True)
 
-        filepath = os.path.join(self.save_dir, "odom_3d_plot.png")
-        self.fig.savefig(filepath)
-        rospy.loginfo(f"3D odometry plot saved at: {filepath}")
+        # Write CSV
+        csv_name = f"record_{timestamp}.csv"
+        csv_path = os.path.join(session_dir, csv_name)
+        try:
+            df.to_csv(csv_path, index=False)
+            rospy.loginfo(f"Recorded {len(df)} samples. Saved CSV to {csv_path}")
+        except Exception as e:
+            rospy.logerr(f"Failed to write CSV file: {e}")
 
-if __name__ == "__main__":
-    rospy.init_node("odom_plotter")
-    OdometryPlotter()
-    rospy.spin()
+        # (Optional) you can trigger plot generation here or leave it for a separate script.
+
+if __name__ == '__main__':
+    try:
+        RecorderNode(goal_tolerance=0.1)
+    except rospy.ROSInterruptException:
+        pass
