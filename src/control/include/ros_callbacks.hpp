@@ -24,7 +24,6 @@ void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg)
     float angular_velocity = msg->angular.z; // Extract angular velocity
 
     CmdLinearVelocity_mps(linear_velocity, angular_velocity);
-    // CmdAngularVelocity_radps(angular_velocity);
 }
 
 #endif //__ROS_CALLBACKS__
