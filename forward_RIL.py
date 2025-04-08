@@ -46,7 +46,7 @@ def publish_path_and_markers(path_points, reverse_path=False):
         # Publish Path message
         path_msg = Path()
         path_msg.header.stamp = rospy.Time.now()
-        path_msg.header.frame_id = "odom"
+        path_msg.header.frame_id = "map"
         
         for i, point in enumerate(path_points):
             # Compute derivative for orientation (tangent) estimation
@@ -74,7 +74,7 @@ def publish_path_and_markers(path_points, reverse_path=False):
         # Publish markers for start and end points
         for i, (p, color) in enumerate([(start_point, (0, 1, 0)), (end_point, (1, 0, 0))]):
             marker = Marker()
-            marker.header.frame_id = "odom"
+            marker.header.frame_id = "map"
             marker.header.stamp = rospy.Time.now()
             marker.ns = "path_markers"
             marker.id = i
@@ -93,14 +93,14 @@ def publish_path_and_markers(path_points, reverse_path=False):
 if __name__ == '__main__':
     # Define control points for Bézier curve.
     control_points = np.array([
-        [0.7,0.7],
-        [34.565,2.313],
-        [15.104,2.588],
-        [43.480,0.7]
+        [0.6,0.6],
+        [1.17,1.38],
+        [1.44,1.69],
+        [2.4,2.9]
     ])
     
     # Generate Bézier curve path.
-    path_points = bezier_curve(control_points, num_points=25)
+    path_points = bezier_curve(control_points, num_points=15)
 
     try:
         publish_path_and_markers(path_points, reverse_path=False)

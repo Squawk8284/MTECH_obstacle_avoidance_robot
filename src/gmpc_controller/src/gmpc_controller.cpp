@@ -58,26 +58,18 @@ public:
         ref_state = Eigen::Vector3d::Zero();
 
         // Set MPC parameters (tune as needed)
-        T = 8.0;
+        T = 10.0;
         delta_t = 0.1;
         // Penalize deviation from desired position/orientation
-        Q = Eigen::Matrix3d::Zero();
-        Q(0, 0) = 40.0; // x
-        Q(1, 1) = 40.0; // y
-        Q(2, 2) = 40.0; // theta
+        Q = 1000 * Eigen::Matrix3d::Identity();
 
         // Heavier cost for final position error
-        Qf = Eigen::Matrix3d::Zero();
-        Qf(0, 0) = 100.0;
-        Qf(1, 1) = 100.0;
-        Qf(2, 2) = 40.0;
+        Qf = 1000 * Eigen::Matrix3d::Identity();
 
         // Penalize excessive control commands (linear and angular velocity)
-        Rm = Eigen::Matrix2d::Zero();
-        Rm(0, 0) = 100.0; // linear velocity (v)
-        Rm(1, 1) = 100.0; // angular velocity (w)
-        u_min << -0.4, -1.0;
-        u_max << 0.4, 1.0;
+        Rm = 80 * Eigen::Matrix2d::Identity();
+        u_min << -0.4, -2.0;
+        u_max << 0.4, 2.0;
     }
 
     // Odometry callback: updates current state and runs MPC if a path is available.
