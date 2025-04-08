@@ -1,0 +1,4 @@
+<launch>    
+    <!-- Control node for the robot -->
+    <node name="control_ros_node" pkg="control_ros_node" type="control_ros_node_node" output="screen"/>
+</launch>

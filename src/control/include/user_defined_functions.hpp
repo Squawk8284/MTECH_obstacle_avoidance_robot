@@ -55,7 +55,7 @@ constexpr double ALPHA = 0.98;
 
 void init()
 {
-    setSafetyMode(robotPort, SAFETY_ON);
+    setSafetyMode(robotPort, SAFETY_OFF);
     setRobotMode(robotPort, CLOSED_LOOP_CONTROL);
     setWheelDiameter_mm(robotPort, WHEEL_DIA_IN_MM);
     setAxleLength_mm(robotPort, AXEL_LENGTH_IN_MM);
@@ -81,7 +81,7 @@ void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
     setRobotDirection(robotPort, FORWARD);
 }
 
-void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odom_broadcaster)
+void UpdateOdometry(geometry_msgs::TransformStamped &odom_trans, nav_msgs::Odometry &odom_msg)
 {
     ros::Time current_time = ros::Time::now();
     int32_t LeftMotorEncoderCounts, RightMotorEncoderCounts;
@@ -91,8 +91,8 @@ void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odo
     getRightMotorEncoderCounts(robotPort, &RightMotorEncoderCounts);
     clearEncoderCounts(robotPort);
 
-    double distLeft = (WheelRevPerCounts) * (LeftMotorEncoderCounts) * (wheel_dia_m * M_PI);
-    double distRight = (WheelRevPerCounts) * (RightMotorEncoderCounts) * (wheel_dia_m * M_PI);
+    double distLeft = (WheelRevPerCounts) * (LeftMotorEncoderCounts / 4.0) * (wheel_dia_m * M_PI);
+    double distRight = (WheelRevPerCounts) * (RightMotorEncoderCounts / 4.0) * (wheel_dia_m * M_PI);
 
     float delta_centre = (distLeft + distRight) / 2.0;
     float delta_theta = (distRight - distLeft) / axel_length_m;
@@ -105,16 +105,13 @@ void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odo
     getLeftMotorVelocity_mps(robotPort, &LeftVelocity);
     getRightMotorVelocity_mps(robotPort, &RightVelocity);
 
-    PrintLn("Left = ", LeftVelocity, " Right = ", RightVelocity,"\n\r");
-
     robotPose.LinearVelocity = (RightVelocity + LeftVelocity) / 2.0;
-    robotPose.AngularVelocity = (RightVelocity - LeftVelocity) / axel_length_m;
+    robotPose.AngularVelocity = (LeftVelocity - RightVelocity) / axel_length_m;
 
     tf2::Quaternion q;
     q.setRPY(0, 0, robotPose.Theta);
 
     // Publish the TF transform from "odom" to "base_link"
-    geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = current_time;
     odom_trans.header.frame_id = "odom";
     odom_trans.child_frame_id = "base_link";
@@ -125,10 +122,8 @@ void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odo
     odom_trans.transform.rotation.y = q.y();
     odom_trans.transform.rotation.z = q.z();
     odom_trans.transform.rotation.w = q.w();
-    odom_broadcaster.sendTransform(odom_trans);
 
     // Publish the Odometry message on the /odom topic
-    nav_msgs::Odometry odom_msg;
     odom_msg.header.stamp = current_time;
     odom_msg.header.frame_id = "odom";
     odom_msg.pose.pose.position.x = robotPose.X;
@@ -139,8 +134,6 @@ void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odo
     odom_msg.twist.twist.linear.x = robotPose.LinearVelocity;
     odom_msg.twist.twist.linear.y = 0.0;
     odom_msg.twist.twist.angular.z = robotPose.AngularVelocity;
-
-    odom_pub.publish(odom_msg);
 }
 
 // --------------------- Functions for calculations of YAW from internal Sensor ---------------------
