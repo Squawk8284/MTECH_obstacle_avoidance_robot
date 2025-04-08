@@ -62,6 +62,7 @@ void init()
     setBuzzer(robotPort, BUZZER_OFF);
     getWheelDiameter_m(robotPort, &wheel_dia_m);
     getAxleLength_m(robotPort, &axel_length_m);
+    clearEncoderCounts(robotPort);
     getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
     WheelRevPerCounts = static_cast<double>(1.0 / CountsPerWheelRevolution);
     PrintLn("Enter Starting X Pos:");
@@ -83,16 +84,25 @@ void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
 
 void UpdateOdometry(geometry_msgs::TransformStamped &odom_trans, nav_msgs::Odometry &odom_msg)
 {
+    static int32_t prevLeftEncoderCounts = 0;
+    static int32_t prevRightEncoderCounts = 0;
     ros::Time current_time = ros::Time::now();
-    int32_t LeftMotorEncoderCounts, RightMotorEncoderCounts;
     float LeftVelocity, RightVelocity;
 
-    getLeftMotorEncoderCounts(robotPort, &LeftMotorEncoderCounts);
-    getRightMotorEncoderCounts(robotPort, &RightMotorEncoderCounts);
-    clearEncoderCounts(robotPort);
+    int32_t currentLeftEncoderCounts, currentRightEncoderCounts;
+    getLeftMotorEncoderCounts(robotPort, &currentLeftEncoderCounts);
+    getRightMotorEncoderCounts(robotPort, &currentRightEncoderCounts);
 
-    double distLeft = (WheelRevPerCounts) * (LeftMotorEncoderCounts / 4.0) * (wheel_dia_m * M_PI);
-    double distRight = (WheelRevPerCounts) * (RightMotorEncoderCounts / 4.0) * (wheel_dia_m * M_PI);
+    // Calculate delta (change in encoder counts)
+    int32_t deltaLeft = currentLeftEncoderCounts - prevLeftEncoderCounts;
+    int32_t deltaRight = currentRightEncoderCounts - prevRightEncoderCounts;
+
+    // Update previous encoder counts for the next iteration
+    prevLeftEncoderCounts = currentLeftEncoderCounts;
+    prevRightEncoderCounts = currentRightEncoderCounts;
+
+    double distLeft = (WheelRevPerCounts) * (deltaLeft) * (wheel_dia_m * M_PI);
+    double distRight = (WheelRevPerCounts) * (deltaRight) * (wheel_dia_m * M_PI);
 
     float delta_centre = (distLeft + distRight) / 2.0;
     float delta_theta = (distRight - distLeft) / axel_length_m;
