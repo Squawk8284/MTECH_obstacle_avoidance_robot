@@ -45,7 +45,7 @@ extern serial::Serial *imuPort;
 extern float axel_length_m;
 extern float wheel_dia_m;
 extern uint16_t CountsPerWheelRevolution;
-extern uint16_t WheelRevPerCounts;
+extern double WheelRevPerCounts;
 extern Pose robotPose;
 constexpr double ALPHA = 0.98;
 
@@ -63,7 +63,7 @@ void init()
     getWheelDiameter_m(robotPort, &wheel_dia_m);
     getAxleLength_m(robotPort, &axel_length_m);
     getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
-    WheelRevPerCounts = 1 / CountsPerWheelRevolution;
+    WheelRevPerCounts = static_cast<double>(1.0 / CountsPerWheelRevolution);
     PrintLn("Enter Starting X Pos:");
     std::cin >> robotPose.X;
     PrintLn("Enter Starting Y Pos:");
@@ -84,27 +84,28 @@ void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
 void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odom_broadcaster)
 {
     ros::Time current_time = ros::Time::now();
-    uint32_t LeftMotorEncoderCounts, RightMotorEncoderCounts;
+    int32_t LeftMotorEncoderCounts, RightMotorEncoderCounts;
     float LeftVelocity, RightVelocity;
 
     getLeftMotorEncoderCounts(robotPort, &LeftMotorEncoderCounts);
     getRightMotorEncoderCounts(robotPort, &RightMotorEncoderCounts);
     clearEncoderCounts(robotPort);
-    PrintLn("Left = ", LeftMotorEncoderCounts, " Right = ", RightMotorEncoderCounts);
 
     double distLeft = (WheelRevPerCounts) * (LeftMotorEncoderCounts) * (wheel_dia_m * M_PI);
     double distRight = (WheelRevPerCounts) * (RightMotorEncoderCounts) * (wheel_dia_m * M_PI);
 
-    double delta_centre = (distLeft + distRight) / 2.0;
-    double delta_theta = (distRight - distLeft) / axel_length_m;
+    float delta_centre = (distLeft + distRight) / 2.0;
+    float delta_theta = (distRight - distLeft) / axel_length_m;
 
-    robotPose.X += delta_centre * cos(robotPose.Theta + delta_theta / 2.0);
-    robotPose.Y += delta_centre * sin(robotPose.Theta + delta_theta / 2.0);
+    robotPose.X += delta_centre * cos(robotPose.Theta + (delta_theta / 2.0));
+    robotPose.Y += delta_centre * sin(robotPose.Theta + (delta_theta / 2.0));
     robotPose.Z = 0;
     robotPose.Theta += delta_theta;
 
     getLeftMotorVelocity_mps(robotPort, &LeftVelocity);
     getRightMotorVelocity_mps(robotPort, &RightVelocity);
+
+    PrintLn("Left = ", LeftVelocity, " Right = ", RightVelocity,"\n\r");
 
     robotPose.LinearVelocity = (RightVelocity + LeftVelocity) / 2.0;
     robotPose.AngularVelocity = (RightVelocity - LeftVelocity) / axel_length_m;

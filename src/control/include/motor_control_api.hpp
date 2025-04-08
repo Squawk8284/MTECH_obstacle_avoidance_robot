@@ -461,13 +461,13 @@ bool setRobotDirection(serial::Serial *s, uint8_t direction)
  * @return true if successful.
  * @return false if failed.
  */
-bool getLeftMotorEncoderCounts(serial::Serial *s, uint32_t *LeftEncoderCounts)
+bool getLeftMotorEncoderCounts(serial::Serial *s, int32_t *LeftEncoderCounts)
 {
     uint8_t buffer[4] = {0};
     if (!executeCommand(s, CMD(GetLeftMotorEncoderCounts, 0x92, 0x00), nullptr, 0, ReturnPayload(4), buffer, sizeof(buffer)))
         return FAILURE;
 
-    *LeftEncoderCounts = (static_cast<uint32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
+    *LeftEncoderCounts = (static_cast<int32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
     return SUCCESS;
 }
 
@@ -479,13 +479,13 @@ bool getLeftMotorEncoderCounts(serial::Serial *s, uint32_t *LeftEncoderCounts)
  * @return true if successful.
  * @return false if failed.
  */
-bool getRightMotorEncoderCounts(serial::Serial *s, uint32_t *RightEncoderCounts)
+bool getRightMotorEncoderCounts(serial::Serial *s, int32_t *RightEncoderCounts)
 {
     uint8_t buffer[4] = {0};
     if (!executeCommand(s, CMD(GetRightMotorEncoderCounts, 0x93, 0x00), nullptr, 0, ReturnPayload(4), buffer, sizeof(buffer)))
         return FAILURE;
 
-    *RightEncoderCounts = (static_cast<uint32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
+    *RightEncoderCounts = (static_cast<int32_t>(buffer[0]) << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]);
     return SUCCESS;
 }
 

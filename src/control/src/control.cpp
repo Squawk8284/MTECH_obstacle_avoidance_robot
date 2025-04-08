@@ -30,7 +30,7 @@ serial::Serial *imuPort = nullptr;
 float axel_length_m;
 float wheel_dia_m;
 uint16_t CountsPerWheelRevolution;
-uint16_t WheelRevPerCounts;
+double WheelRevPerCounts;
 
 Pose robotPose;
 
