@@ -30,7 +30,7 @@ serial::Serial *imuPort = nullptr;
 float axel_length_m;
 float wheel_dia_m;
 uint16_t CountsPerWheelRevolution;
-uint16_t WheelRevPerCounts;
+double WheelRevPerCounts;
 
 Pose robotPose;
 
@@ -41,25 +41,30 @@ Pose robotPose;
 int main(int argc, char **argv)
 {
 
+    ros::init(argc, argv, "control");
     try
     {
         robotPort = createSerial("/dev/ttyRobot", 57600);
         init();
-        ros::init(argc, argv, "control");
         ros::NodeHandle nh;
-
-        ros::Subscriber sub = nh.subscribe("/cmd_vel", 10, cmdVelCallback);
-        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 50);
+        ros::Rate loopRate(50);
+        ros::Subscriber sub = nh.subscribe("/cmd_vel", 50, cmdVelCallback);
         tf2_ros::TransformBroadcaster odom_broadcaster;
+        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 50);
 
+        geometry_msgs::TransformStamped odom_trans;
+        nav_msgs::Odometry odom_msg;
         ROS_INFO("Waiting for 2 seconds...");
         ros::Duration(2.0).sleep(); // Sleep for 2 seconds
         ROS_INFO("Resuming execution!");
 
         while (ros::ok())
         {
-            // UpdateOdometry(odom_pub, odom_broadcaster);
+            UpdateOdometry(odom_trans, odom_msg);
+            odom_broadcaster.sendTransform(odom_trans);
+            odom_pub.publish(odom_msg);
             ros::spinOnce();
+            loopRate.sleep();
         }
     }
     catch (const std::exception &e)

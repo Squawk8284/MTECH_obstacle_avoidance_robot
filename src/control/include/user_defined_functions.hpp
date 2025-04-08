@@ -45,7 +45,7 @@ extern serial::Serial *imuPort;
 extern float axel_length_m;
 extern float wheel_dia_m;
 extern uint16_t CountsPerWheelRevolution;
-extern uint16_t WheelRevPerCounts;
+extern double WheelRevPerCounts;
 extern Pose robotPose;
 constexpr double ALPHA = 0.98;
 
@@ -55,21 +55,22 @@ constexpr double ALPHA = 0.98;
 
 void init()
 {
-    setSafetyMode(robotPort, SAFETY_ON);
+    setSafetyMode(robotPort, SAFETY_OFF);
     setRobotMode(robotPort, CLOSED_LOOP_CONTROL);
     setWheelDiameter_mm(robotPort, WHEEL_DIA_IN_MM);
     setAxleLength_mm(robotPort, AXEL_LENGTH_IN_MM);
     setBuzzer(robotPort, BUZZER_OFF);
     getWheelDiameter_m(robotPort, &wheel_dia_m);
     getAxleLength_m(robotPort, &axel_length_m);
+    clearEncoderCounts(robotPort);
     getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
-    WheelRevPerCounts = 1 / CountsPerWheelRevolution;
-    // PrintLn("Enter Starting X Pos:");
-    // std::cin >> robotPose.X;
-    // PrintLn("Enter Starting Y Pos:");
-    // std::cin >> robotPose.Y;
-    // PrintLn("Enter Starting 0 Pos:");
-    // std::cin >> robotPose.Theta;
+    WheelRevPerCounts = static_cast<double>(1.0 / CountsPerWheelRevolution);
+    PrintLn("Enter Starting X Pos:");
+    std::cin >> robotPose.X;
+    PrintLn("Enter Starting Y Pos:");
+    std::cin >> robotPose.Y;
+    PrintLn("Enter Starting 0 Pos:");
+    std::cin >> robotPose.Theta;
 }
 void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
 {
@@ -81,24 +82,33 @@ void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
     setRobotDirection(robotPort, FORWARD);
 }
 
-void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odom_broadcaster)
+void UpdateOdometry(geometry_msgs::TransformStamped &odom_trans, nav_msgs::Odometry &odom_msg)
 {
+    static int32_t prevLeftEncoderCounts = 0;
+    static int32_t prevRightEncoderCounts = 0;
     ros::Time current_time = ros::Time::now();
-    uint32_t LeftMotorEncoderCounts, RightMotorEncoderCounts;
     float LeftVelocity, RightVelocity;
 
-    getLeftMotorEncoderCounts(robotPort, &LeftMotorEncoderCounts);
-    getRightMotorEncoderCounts(robotPort, &RightMotorEncoderCounts);
-    clearEncoderCounts(robotPort);
+    int32_t currentLeftEncoderCounts, currentRightEncoderCounts;
+    getLeftMotorEncoderCounts(robotPort, &currentLeftEncoderCounts);
+    getRightMotorEncoderCounts(robotPort, &currentRightEncoderCounts);
 
-    double distLeft = (WheelRevPerCounts) * (LeftMotorEncoderCounts) * (wheel_dia_m * M_PI);
-    double distRight = (WheelRevPerCounts) * (RightMotorEncoderCounts) * (wheel_dia_m * M_PI);
+    // Calculate delta (change in encoder counts)
+    int32_t deltaLeft = currentLeftEncoderCounts - prevLeftEncoderCounts;
+    int32_t deltaRight = currentRightEncoderCounts - prevRightEncoderCounts;
 
-    double delta_centre = (distLeft + distRight) / 2.0;
-    double delta_theta = (distRight - distLeft) / axel_length_m;
+    // Update previous encoder counts for the next iteration
+    prevLeftEncoderCounts = currentLeftEncoderCounts;
+    prevRightEncoderCounts = currentRightEncoderCounts;
 
-    robotPose.X += delta_centre * cos(robotPose.Theta + delta_theta / 2.0);
-    robotPose.Y += delta_centre * sin(robotPose.Theta + delta_theta / 2.0);
+    double distLeft = (WheelRevPerCounts) * (deltaLeft) * (wheel_dia_m * M_PI);
+    double distRight = (WheelRevPerCounts) * (deltaRight) * (wheel_dia_m * M_PI);
+
+    float delta_centre = (distLeft + distRight) / 2.0;
+    float delta_theta = (distRight - distLeft) / axel_length_m;
+
+    robotPose.X += delta_centre * cos(robotPose.Theta + (delta_theta / 2.0));
+    robotPose.Y += delta_centre * sin(robotPose.Theta + (delta_theta / 2.0));
     robotPose.Z = 0;
     robotPose.Theta += delta_theta;
 
@@ -106,13 +116,12 @@ void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odo
     getRightMotorVelocity_mps(robotPort, &RightVelocity);
 
     robotPose.LinearVelocity = (RightVelocity + LeftVelocity) / 2.0;
-    robotPose.AngularVelocity = (RightVelocity - LeftVelocity) / axel_length_m;
+    robotPose.AngularVelocity = (LeftVelocity - RightVelocity) / axel_length_m;
 
     tf2::Quaternion q;
     q.setRPY(0, 0, robotPose.Theta);
 
     // Publish the TF transform from "odom" to "base_link"
-    geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = current_time;
     odom_trans.header.frame_id = "odom";
     odom_trans.child_frame_id = "base_link";
@@ -123,10 +132,8 @@ void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odo
     odom_trans.transform.rotation.y = q.y();
     odom_trans.transform.rotation.z = q.z();
     odom_trans.transform.rotation.w = q.w();
-    odom_broadcaster.sendTransform(odom_trans);
 
     // Publish the Odometry message on the /odom topic
-    nav_msgs::Odometry odom_msg;
     odom_msg.header.stamp = current_time;
     odom_msg.header.frame_id = "odom";
     odom_msg.pose.pose.position.x = robotPose.X;
@@ -137,8 +144,6 @@ void UpdateOdometry(ros::Publisher &odom_pub, tf2_ros::TransformBroadcaster &odo
     odom_msg.twist.twist.linear.x = robotPose.LinearVelocity;
     odom_msg.twist.twist.linear.y = 0.0;
     odom_msg.twist.twist.angular.z = robotPose.AngularVelocity;
-
-    odom_pub.publish(odom_msg);
 }
 
 // --------------------- Functions for calculations of YAW from internal Sensor ---------------------
