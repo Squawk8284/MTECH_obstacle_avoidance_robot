@@ -45,8 +45,11 @@ int main(int argc, char **argv)
     try
     {
         robotPort = createSerial("/dev/ttyRobot", 57600);
-        init();
         ros::NodeHandle nh;
+        ROS_INFO("Waiting for 2 seconds...");
+        ros::Duration(2.0).sleep(); // Sleep for 2 seconds
+        ROS_INFO("Resuming execution!");
+        init();
         ros::Rate loopRate(50);
         ros::Subscriber sub = nh.subscribe("/cmd_vel", 50, cmdVelCallback);
         tf2_ros::TransformBroadcaster odom_broadcaster;
@@ -54,9 +57,6 @@ int main(int argc, char **argv)
 
         geometry_msgs::TransformStamped odom_trans;
         nav_msgs::Odometry odom_msg;
-        ROS_INFO("Waiting for 2 seconds...");
-        ros::Duration(2.0).sleep(); // Sleep for 2 seconds
-        ROS_INFO("Resuming execution!");
 
         while (ros::ok())
         {

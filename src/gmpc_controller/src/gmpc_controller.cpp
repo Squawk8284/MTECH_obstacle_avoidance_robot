@@ -58,11 +58,24 @@ public:
         ref_state = Eigen::Vector3d::Zero();
 
         // Set MPC parameters (tune as needed)
-        T = 10;
+        T = 8.0;
         delta_t = 0.1;
-        Q = 20 * Eigen::Matrix3d::Identity();
-        Qf = 20 * Eigen::Matrix3d::Identity();
-        Rm = 2.5 * Eigen::Matrix2d::Identity();
+        // Penalize deviation from desired position/orientation
+        Q = Eigen::Matrix3d::Zero();
+        Q(0, 0) = 40.0; // x
+        Q(1, 1) = 40.0; // y
+        Q(2, 2) = 40.0; // theta
+
+        // Heavier cost for final position error
+        Qf = Eigen::Matrix3d::Zero();
+        Qf(0, 0) = 100.0;
+        Qf(1, 1) = 100.0;
+        Qf(2, 2) = 40.0;
+
+        // Penalize excessive control commands (linear and angular velocity)
+        Rm = Eigen::Matrix2d::Zero();
+        Rm(0, 0) = 100.0; // linear velocity (v)
+        Rm(1, 1) = 100.0; // angular velocity (w)
         u_min << -0.4, -1.0;
         u_max << 0.4, 1.0;
     }

@@ -89,7 +89,7 @@ void UpdateOdometry(geometry_msgs::TransformStamped &odom_trans, nav_msgs::Odome
     ros::Time current_time = ros::Time::now();
     float LeftVelocity, RightVelocity;
 
-    int32_t currentLeftEncoderCounts, currentRightEncoderCounts;
+    uint32_t currentLeftEncoderCounts, currentRightEncoderCounts;
     getLeftMotorEncoderCounts(robotPort, &currentLeftEncoderCounts);
     getRightMotorEncoderCounts(robotPort, &currentRightEncoderCounts);
 

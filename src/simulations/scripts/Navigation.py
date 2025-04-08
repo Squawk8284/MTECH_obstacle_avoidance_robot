@@ -25,7 +25,7 @@ class TLBO():
         self.obstacles = None
         self.subjects = 2
         self.num_of_learners = 15
-        self.delta = 0.54
+        self.delta = 0.58
         self.sigma = 2
         self.iterations = 3
         self.w1 = 0.65
@@ -340,7 +340,7 @@ def Path_callback(msg):
         marker.pose.position.x, marker.pose.position.y = p
         marker.pose.position.z = 0.1
         marker.pose.orientation.w = 1.0
-        marker.scale.x = marker.scale.y = marker.scale.z = 0.3
+        marker.scale.x = marker.scale.y = marker.scale.z = path_planner.delta
         marker.color.a ,marker.color.r ,marker.color.g, marker.color.b = (1.0, *color)
         marker_publisher.publish(marker)
 
