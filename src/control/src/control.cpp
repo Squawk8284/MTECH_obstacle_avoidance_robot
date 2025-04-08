@@ -48,7 +48,7 @@ int main(int argc, char **argv)
         init();
         ros::NodeHandle nh;
         ros::Rate loopRate(50);
-        // ros::Subscriber sub = nh.subscribe("/cmd_vel", 1, cmdVelCallback);
+        ros::Subscriber sub = nh.subscribe("/cmd_vel", 1, cmdVelCallback);
         tf2_ros::TransformBroadcaster odom_broadcaster;
         ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 50);
 

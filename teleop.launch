@@ -1,5 +1,4 @@
 <launch>
     <include file="$(find control)/launch/control.launch" />
-    <include file="$(find control_ros_node)/launch/control_ros_node.launch" />
     <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_keyboard" output="screen"/>
 </launch>
