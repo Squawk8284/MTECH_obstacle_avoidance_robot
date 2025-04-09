@@ -11,7 +11,6 @@ from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid, Path, Odometry
 from geometry_msgs.msg import Polygon, Point32, PoseStamped
 import ast
-# import matplotlib.pyplot as plt
 import os
 
 
@@ -299,6 +298,7 @@ def Path_callback(msg):
     global path_points
     global marker_publisher
 
+
     timestamp = msg.header.stamp.to_sec()
     resolution = msg.info.resolution
     width = msg.info.width
@@ -323,7 +323,7 @@ def Path_callback(msg):
             seen.add(obs_tuple)
 
     path_x, path_y = path_planner.path_planning(obstacles=unique_obstacles, new_start=start)
-    
+
     time_now = rospy.Time.now()
     path = Path()
     path.header.frame_id = "map"
@@ -340,18 +340,12 @@ def Path_callback(msg):
         marker.pose.position.x, marker.pose.position.y = p
         marker.pose.position.z = 0.1
         marker.pose.orientation.w = 1.0
-        marker.scale.x = marker.scale.y = marker.scale.z = path_planner.delta
+        marker.scale.x = marker.scale.y = marker.scale.z = 0.3
         marker.color.a ,marker.color.r ,marker.color.g, marker.color.b = (1.0, *color)
         marker_publisher.publish(marker)
 
     
     for i in range(len(path_x)):
-        pose = PoseStamped()
-        pose.header = path.header
-        pose.pose.position.x = path_x[i]
-        pose.pose.position.y = path_y[i]
-        pose.pose.position.z = 0
-    
         if i == 0:
             dx, dy = path_x[i+1] - path_x[i], path_y[i+1] - path_y[i]
         elif i == len(path_x) - 1:
@@ -360,23 +354,18 @@ def Path_callback(msg):
             dx, dy = path_x[i+1] - path_x[i-1], path_y[i+1] - path_y[i-1]
         yaw = math.atan2(dy, dx)
         q = quaternion_from_yaw(yaw)
+        
+        pose = PoseStamped()
+        pose.header = path.header
+        pose.pose.position.x = path_x[i]
+        pose.pose.position.y = path_y[i]
+        pose.pose.position.z = 0.0
+    
         pose.pose.orientation.x, pose.pose.orientation.y = q[:2]
         pose.pose.orientation.z, pose.pose.orientation.w = q[2:]
 
         path.poses.append(pose)
     path_points.publish(path)
-
-    # for obs in unique_obstacles:
-    #     poly = SPoly(obs)
-    #     x, y = poly.exterior.xy
-    #     plt.plot(x,y)
-    # filename = os.path.join(folder_name, f"graph_{graph_count}.png")
-    # plt.plot(path_x, path_y)
-    # plt.scatter(path_x, path_y)
-    # plt.savefig(filename)
-    # graph_count += 1
-    # plt.close()
-    # rospy.loginfo(len(unique_obstacles))
 
 def Odom_callback(msg):
 
@@ -384,7 +373,7 @@ def Odom_callback(msg):
     start = (msg.pose.pose.position.x, msg.pose.pose.position.y)
 
 
-start = (0,0)
+start = (0.6,0.6)
 graph_count = 0
 folder_name = "graph"
 
