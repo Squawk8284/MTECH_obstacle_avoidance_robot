@@ -8,11 +8,15 @@ import tf2_ros
 
 class ActualPathPublisher:
     def __init__(self):
-        self.path_pub = rospy.Publisher("/actual_path", Path, queue_size=10)
-        self.marker_pub = rospy.Publisher("/latest_path_marker", Marker, queue_size=1)
-        self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
+        actual_path_topic = rospy.get_param('actual_path_topic','/actual_path_topic')
+        latest_path_marker_topic = rospy.get_param('latest_path_marker_topic','/latest_path_marker_topic')
+        odom_topic = rospy.get_param('odom_topic','/odom')
+
+        self.path_pub = rospy.Publisher(actual_path_topic, Path, queue_size=10)
+        self.marker_pub = rospy.Publisher(latest_path_marker_topic, Marker, queue_size=1)
+        self.odom_sub = rospy.Subscriber(odom_topic, Odometry, self.odom_callback)
         self.path = Path()
-        self.path.header.frame_id = "odom"
+        self.path.header.frame_id = "map"
         self.path.poses = []
 
         self.tf_broadcaster = tf2_ros.TransformBroadcaster()
@@ -21,7 +25,7 @@ class ActualPathPublisher:
         # --- Record actual path ---
         ps = PoseStamped()
         ps.header.stamp = msg.header.stamp
-        ps.header.frame_id = "odom"
+        ps.header.frame_id = "map"
         ps.pose = msg.pose.pose
 
         self.path.poses.append(ps)
@@ -50,7 +54,7 @@ class ActualPathPublisher:
 
     def publish_latest_marker(self, pose_stamped):
         marker = Marker()
-        marker.header.frame_id = "odom"
+        marker.header.frame_id = "map"
         marker.header.stamp = rospy.Time.now()
         marker.ns = "actual_path_marker"
         marker.id = 0
@@ -58,9 +62,9 @@ class ActualPathPublisher:
         marker.action = Marker.ADD
         marker.pose = pose_stamped.pose
 
-        marker.scale.x = 0.3
-        marker.scale.y = 0.3
-        marker.scale.z = 0.3
+        marker.scale.x = 0.6
+        marker.scale.y = 0.6
+        marker.scale.z = 0.6
 
         marker.color.r = 0.0
         marker.color.g = 0.0

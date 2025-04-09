@@ -9,9 +9,11 @@ from geometry_msgs.msg import PoseStamped
 def main():
     rospy.init_node('realsense_publisher', anonymous=True)
     
+    color_camera_raw_topic = rospy.get_param('camera_color_image_raw_topic','/camera/color/image_raw')
+    depth_image_topic = rospy.get_param('depth_image_topic','/camera/depth/image_raw')
     # Publishers for topics a, b, c
-    pub_color = rospy.Publisher('/camera/color/image_raw', Image, queue_size=10)  # Topic for color image
-    pub_aligned_depth = rospy.Publisher('/camera/depth/image_raw', Image, queue_size=10)  # Topic for aligned depth
+    pub_color = rospy.Publisher(color_camera_raw_topic, Image, queue_size=10)  # Topic for color image
+    pub_aligned_depth = rospy.Publisher(depth_image_topic, Image, queue_size=10)  # Topic for aligned depth
     pub_raw_depth = rospy.Publisher('/camera/depth/image_rect_raw', Image, queue_size=30)  # Topic for raw depth
     # pub_pose = rospy.Publisher('/mavros/local_position/pose', PoseStamped, queue_size=10)
     

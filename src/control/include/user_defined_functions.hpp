@@ -49,6 +49,10 @@ extern double WheelRevPerCounts;
 extern Pose robotPose;
 constexpr double ALPHA = 0.98;
 
+extern float start_x;
+extern float start_y;
+extern float start_theta;
+
 // ---------------------------------------------------------------------------
 // Function Defination
 // ---------------------------------------------------------------------------
@@ -65,13 +69,11 @@ void init()
     clearEncoderCounts(robotPort);
     getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
     WheelRevPerCounts = static_cast<double>(1.0 / CountsPerWheelRevolution);
-    PrintLn("Enter Starting X Pos:");
-    std::cin >> robotPose.X;
-    PrintLn("Enter Starting Y Pos:");
-    std::cin >> robotPose.Y;
-    PrintLn("Enter Starting 0 Pos:");
-    std::cin >> robotPose.Theta;
+    robotPose.X = start_x;
+    robotPose.Y = start_y;
+    robotPose.Theta = start_theta;
 }
+
 void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
 {
     float leftVelocity = linearVelocity - ((axel_length_m * angularVelocity) / 2.0);
@@ -89,7 +91,7 @@ void UpdateOdometry(geometry_msgs::TransformStamped &odom_trans, nav_msgs::Odome
     ros::Time current_time = ros::Time::now();
     float LeftVelocity, RightVelocity;
 
-    int32_t currentLeftEncoderCounts, currentRightEncoderCounts;
+    uint32_t currentLeftEncoderCounts, currentRightEncoderCounts;
     getLeftMotorEncoderCounts(robotPort, &currentLeftEncoderCounts);
     getRightMotorEncoderCounts(robotPort, &currentRightEncoderCounts);
 

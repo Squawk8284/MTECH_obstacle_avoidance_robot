@@ -12,6 +12,11 @@
 using namespace qpOASES;
 using namespace std;
 
+std::string cmd_vel_topic;
+std::string odom_topic;
+std::string path_topic;
+
+
 class GMPCController
 {
 private:
@@ -48,21 +53,31 @@ private:
 public:
     GMPCController() : path_available(false), n_iter(5), tol(1e-3)
     {
+        ros::param::param<std::string>("/cmd_vel_topic", cmd_vel_topic, "/cmd_vel");
+        ros::param::param<std::string>("/odom_topic", odom_topic, "/odom");
+        ros::param::param<std::string>("/path_topic", path_topic, "/path_topic");
+
+
         // Initialize subscribers and publisher
-        odom_sub = nh.subscribe("/odom", 10, &GMPCController::odomCallback, this);
-        path_sub = nh.subscribe("/path_topic", 10, &GMPCController::pathCallback, this);
-        cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
+        odom_sub = nh.subscribe(odom_topic, 10, &GMPCController::odomCallback, this);
+        path_sub = nh.subscribe(path_topic, 10, &GMPCController::pathCallback, this);
+        cmd_vel_pub = nh.advertise<geometry_msgs::Twist>(cmd_vel_topic, 10);
 
         // Initialize state and reference
         state = Eigen::Vector3d::Zero();
         ref_state = Eigen::Vector3d::Zero();
 
         // Set MPC parameters (tune as needed)
-        T = 10;
+        T = 10.0;
         delta_t = 0.1;
-        Q = 20 * Eigen::Matrix3d::Identity();
-        Qf = 20 * Eigen::Matrix3d::Identity();
-        Rm = 2.5 * Eigen::Matrix2d::Identity();
+        // Penalize deviation from desired position/orientation
+        Q = 0.6 * Eigen::Matrix3d::Identity();
+
+        // Heavier cost for final position error
+        Qf = 0.6 * Eigen::Matrix3d::Identity();
+
+        // Penalize excessive control commands (linear and angular velocity)
+        Rm = 0.3 * Eigen::Matrix2d::Identity();
         u_min << -0.4, -1.0;
         u_max << 0.4, 1.0;
     }
@@ -126,7 +141,7 @@ public:
                 closest_idx = i;
             }
         }
-        int lookahead = 1;
+        int lookahead = 2;
         int ref_idx = min(closest_idx + lookahead, (int)current_path.poses.size() - 1);
         ref_state(0) = current_path.poses[ref_idx].pose.position.x;
         ref_state(1) = current_path.poses[ref_idx].pose.position.y;

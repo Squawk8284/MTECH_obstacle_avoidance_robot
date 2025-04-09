@@ -32,6 +32,13 @@ float wheel_dia_m;
 uint16_t CountsPerWheelRevolution;
 double WheelRevPerCounts;
 
+std::string cmd_vel_topic;
+std::string odom_topic;
+
+float start_x;
+float start_y;
+float start_theta;
+
 Pose robotPose;
 
 // ---------------------------------------------------------------------------
@@ -45,19 +52,28 @@ int main(int argc, char **argv)
     try
     {
         robotPort = createSerial("/dev/ttyRobot", 57600);
-        init();
         ros::NodeHandle nh;
-        ros::Rate loopRate(50);
-        ros::Subscriber sub = nh.subscribe("/cmd_vel", 50, cmdVelCallback);
+        ROS_INFO("Waiting for 5 seconds...");
+        ros::Duration(5.0).sleep(); // Sleep for 2 seconds
+        ROS_INFO("Starting.............\n\r");
+        ros::param::param<std::string>("/cmd_vel_topic", cmd_vel_topic, "/cmd_vel");
+        ros::param::param<std::string>("/odom_topic", odom_topic, "/odom");
+
+        ros::param::param<float>("/start_x", start_x, 0.0f);
+        ros::param::param<float>("/start_y", start_y, 0.0f);
+        ros::param::param<float>("/start_theta", start_theta, 0.0f);
+        ros::Rate loopRate(10);
+
+        ros::Subscriber sub = nh.subscribe(cmd_vel_topic, 10, cmdVelCallback);
+
         tf2_ros::TransformBroadcaster odom_broadcaster;
-        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("/odom", 50);
+        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 10);
 
         geometry_msgs::TransformStamped odom_trans;
         nav_msgs::Odometry odom_msg;
-        ROS_INFO("Waiting for 2 seconds...");
-        ros::Duration(2.0).sleep(); // Sleep for 2 seconds
-        ROS_INFO("Resuming execution!");
 
+        init();
+        
         while (ros::ok())
         {
             UpdateOdometry(odom_trans, odom_msg);
