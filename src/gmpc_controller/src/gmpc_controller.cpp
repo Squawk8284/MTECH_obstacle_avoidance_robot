@@ -61,15 +61,15 @@ public:
         T = 10.0;
         delta_t = 0.1;
         // Penalize deviation from desired position/orientation
-        Q = 1000 * Eigen::Matrix3d::Identity();
+        Q = 0.6 * Eigen::Matrix3d::Identity();
 
         // Heavier cost for final position error
-        Qf = 1000 * Eigen::Matrix3d::Identity();
+        Qf = 0.6 * Eigen::Matrix3d::Identity();
 
         // Penalize excessive control commands (linear and angular velocity)
-        Rm = 80 * Eigen::Matrix2d::Identity();
-        u_min << -0.4, -2.0;
-        u_max << 0.4, 2.0;
+        Rm = 0.3 * Eigen::Matrix2d::Identity();
+        u_min << -0.4, -1.0;
+        u_max << 0.4, 1.0;
     }
 
     // Odometry callback: updates current state and runs MPC if a path is available.
@@ -131,7 +131,7 @@ public:
                 closest_idx = i;
             }
         }
-        int lookahead = 1;
+        int lookahead = 2;
         int ref_idx = min(closest_idx + lookahead, (int)current_path.poses.size() - 1);
         ref_state(0) = current_path.poses[ref_idx].pose.position.x;
         ref_state(1) = current_path.poses[ref_idx].pose.position.y;

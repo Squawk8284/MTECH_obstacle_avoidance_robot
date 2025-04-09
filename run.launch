@@ -1,7 +1,7 @@
 <launch>
-    <include file="$(find map_manager)/launch/occupancy_map.launch" />
-    <include file="$(find realsense_node)/launch/realsense_publisher.launch" />
     <!-- <include file="$(find simulations)/launch/turtlebot3_world.launch" /> -->
+    <!-- <include file="$(find map_manager)/launch/occupancy_map.launch" /> -->
+    <!-- <include file="$(find realsense_node)/launch/realsense_publisher.launch" /> -->
     <include file="$(find simulations)/launch/python_scripts.launch" />
     <include file="$(find gmpc_controller)/launch/gmpc.launch" />
     <include file="$(find control)/launch/control.launch" />

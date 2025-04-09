@@ -326,12 +326,12 @@ def Path_callback(msg):
     
     time_now = rospy.Time.now()
     path = Path()
-    path.header.frame_id = "odom"
+    path.header.frame_id = "map"
     path.header.stamp = time_now
 
     for i, (p, color) in enumerate([((path_x[0], path_y[0]), (0,1,0)), ((path_x[-1], path_y[-1]), (1,0,0))]):
         marker = Marker()
-        marker.header.frame_id = "odom"
+        marker.header.frame_id = "map"
         marker.header.stamp = time_now
         marker.ns = "path_marker"
         marker.id = i
@@ -347,7 +347,7 @@ def Path_callback(msg):
     
     for i in range(len(path_x)):
         pose = PoseStamped()
-        pose.header.frame_id = "odom"
+        pose.header.frame_id = "map"
         pose.header.stamp = time_now
         pose.pose.position.x = path_x[i]
         pose.pose.position.y = path_y[i]
