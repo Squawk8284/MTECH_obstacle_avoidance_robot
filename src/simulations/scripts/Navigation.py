@@ -333,7 +333,7 @@ def Path_callback(msg):
         marker = Marker()
         marker.header.frame_id = "map"
         marker.header.stamp = time_now
-        marker.ns = "path_marker"
+        marker.ns = "path_markers"
         marker.id = i
         marker.type = Marker.SPHERE
         marker.action = Marker.ADD
@@ -347,8 +347,7 @@ def Path_callback(msg):
     
     for i in range(len(path_x)):
         pose = PoseStamped()
-        pose.header.frame_id = "map"
-        pose.header.stamp = time_now
+        pose.header = path.header
         pose.pose.position.x = path_x[i]
         pose.pose.position.y = path_y[i]
         pose.pose.position.z = 0
