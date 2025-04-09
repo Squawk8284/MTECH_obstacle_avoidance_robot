@@ -1,11 +1,15 @@
 
 # TOPICS
+actual_path_topic: /actual_path_topic
 path_topic: /path_topic
 marker_topic: /visualization_marker
+latest_path_marker_topic: /latest_path_marker
 occupancy_map_topic: /occupancy_map/2D_occupancy_map
 depth_image_topic: /camera/depth/image_raw
 pose_topic: /CERLAB/quadcopter/pose
+camera_color_image_raw_topic: /camera/color/image_raw
 odom_topic: /odom
+cmd_vel_topic: /cmd_vel
 
 # PARAMETERS
 bounds:
@@ -58,7 +62,7 @@ ground_height: -0.1 # m
 map_size: [40, 40, 3] # meter. in x y z direction (reserved size)
 local_update_range: [5, 5, 5]
 local_bound_inflation: 1.0 # inflate local bound in meter
-clean_local_map: false
+clean_local_map: true
 
 # visualziation
 local_map_size: [40, 40, 6] # meter. in x y z direction (only for visualization)

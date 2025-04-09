@@ -8,9 +8,13 @@ import tf2_ros
 
 class ActualPathPublisher:
     def __init__(self):
-        self.path_pub = rospy.Publisher("/actual_path", Path, queue_size=10)
-        self.marker_pub = rospy.Publisher("/latest_path_marker", Marker, queue_size=1)
-        self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
+        actual_path_topic = rospy.get_param('actual_path_topic','/actual_path_topic')
+        latest_path_marker_topic = rospy.get_param('latest_path_marker_topic','/latest_path_marker_topic')
+        odom_topic = rospy.get_param('odom_topic','/odom')
+
+        self.path_pub = rospy.Publisher(actual_path_topic, Path, queue_size=10)
+        self.marker_pub = rospy.Publisher(latest_path_marker_topic, Marker, queue_size=1)
+        self.odom_sub = rospy.Subscriber(odom_topic, Odometry, self.odom_callback)
         self.path = Path()
         self.path.header.frame_id = "map"
         self.path.poses = []
