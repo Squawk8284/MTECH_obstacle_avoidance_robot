@@ -16,20 +16,20 @@ import os
 
 class TLBO():
 
-    def __init__(self, start, end, bounds):
+    def __init__(self, start, end, bounds,num_of_learners=15,path_points=25,subjects=2):
         self.start = start
         self.end = end
         self.bounds = bounds
         self.bounds_polygon = None
         self.obstacles = None
-        self.subjects = 2
-        self.num_of_learners = 15
+        self.subjects = subjects
+        self.num_of_learners = num_of_learners
         self.delta = 0.58
-        self.sigma = 2
+        self.sigma = 100
         self.iterations = 3
         self.w1 = 0.65
         self.w2 = 0.35
-        self.path_points = 25
+        self.path_points = path_points
         self.t = np.linspace(0,1,self.path_points)
         self.bernstein = [self.__bernstein_poly(i, self.subjects+2-1, self.t) for i in range(self.subjects+2)]
         self.theta = None
@@ -292,19 +292,15 @@ def extract_obstacles(grid, origin, resolution):
     return obstacles
 
 def Path_callback(msg):
-    global graph_count
-    global folder_name
     global start
     global path_points
     global marker_publisher
 
-
-    timestamp = msg.header.stamp.to_sec()
     resolution = msg.info.resolution
     width = msg.info.width
     height = msg.info.height
     origin = (msg.info.origin.position.x, msg.info.origin.position.y, msg.info.origin.position.z)
-    os.makedirs(name=folder_name, exist_ok=True)
+
     # Check the grid data size before reshaping
     if len(msg.data) != width * height:
         rospy.logerr("OccupancyGrid data size does not match expected dimensions!")
@@ -373,20 +369,35 @@ def Odom_callback(msg):
     start = (msg.pose.pose.position.x, msg.pose.pose.position.y)
 
 
-start = (0.6,0.6)
-graph_count = 0
-folder_name = "graph"
+start_x = rospy.get_param('start_x')
+start_y = rospy.get_param('start_y')
+start = (start_x, start_y)
+
+end_x = rospy.get_param('end_x')
+end_y = rospy.get_param('end_y')
+end = (end_x,end_y)
+
+bounds = rospy.get_param('bounds')
+
+odom = rospy.get_param('odom_topic','/odom')
+path_topic = rospy.get_param('path_topic','/path_topic')
+marker_topic = rospy.get_param('marker_topic','/visualization_marker')
+occupancy_map_topic = rospy.get_param('occupancy_map_topic','/occupancy_map/2D_occupancy_map')
+
+num_of_learners = rospy.get_param('num_of_learners')
+no_of_path_points = rospy.get_param('path_points')
+subjects = rospy.get_param('subjects')
 
 
 rospy.init_node("Navigation", anonymous=True)
-path_points = rospy.Publisher('/path_topic', Path, queue_size=10)
-marker_publisher = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
+path_points = rospy.Publisher(path_topic, Path, queue_size=10)
+marker_publisher = rospy.Publisher(marker_topic, Marker, queue_size=10)
 rospy.loginfo("Logger started")
 rospy.on_shutdown(lambda: rospy.loginfo("Logger shutdown complete"))
 
-rospy.Subscriber('/odom', Odometry, Odom_callback)
-path_planner = TLBO(start=start, end=(2.4,2.9), bounds=[(0,0),(0,3.5),(3,3.5),(3,0)])
-rospy.Subscriber('/occupancy_map/2D_occupancy_map', OccupancyGrid, Path_callback)
+rospy.Subscriber(odom, Odometry, Odom_callback)
+path_planner = TLBO(start=start, end=end, bounds=bounds, num_of_learners=num_of_learners,path_points=no_of_path_points,subjects=subjects)
+rospy.Subscriber(occupancy_map_topic, OccupancyGrid, Path_callback)
 
 rospy.spin()
 
