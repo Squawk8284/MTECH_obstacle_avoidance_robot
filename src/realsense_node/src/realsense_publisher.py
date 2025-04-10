@@ -62,18 +62,18 @@ def main():
             
             # Publish color image
             color_image = bridge.cv2_to_imgmsg(color_image, encoding="bgr8")
-            color_image.header.frame_id = "camera_color_optical_frame"
+            color_image.header.frame_id = "camera_link"
             color_image.header.stamp = time_ros
             
 
             # Publish aligned depth image
             aligned_depth_image = bridge.cv2_to_imgmsg(aligned_depth_image, encoding="16UC1")
-            aligned_depth_image.header.frame_id = "camera_color_optical_frame"
+            aligned_depth_image.header.frame_id = "camera_link"
             aligned_depth_image.header.stamp = time_ros
 
             # Publish raw depth image
             raw_depth_image = bridge.cv2_to_imgmsg(raw_depth_image, encoding="16UC1")
-            raw_depth_image.header.frame_id = "camera_depth_optical_frame"
+            raw_depth_image.header.frame_id = "camera_link"
             raw_depth_image.header.stamp = time_ros
             
             

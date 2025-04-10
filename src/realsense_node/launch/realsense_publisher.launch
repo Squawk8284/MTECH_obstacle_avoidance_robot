@@ -1,3 +1,5 @@
 <launch>
+    <arg name="param_file" />
+	<rosparam command="load" file="$(arg param_file)" />
     <node pkg="realsense_node" type="realsense_publisher.py" name="realsense_publisher" output="screen"/>
 </launch>

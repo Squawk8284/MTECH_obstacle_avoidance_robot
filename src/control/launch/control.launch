@@ -1,4 +1,7 @@
-<launch>    
+<launch>   
+    <arg name="param_file" />
+	<rosparam command="load" file="$(arg param_file)" />
+
 <!-- Control node for the robot -->
     <node name="control" pkg="control" type="control_node" output="screen"/>
 </launch>

@@ -1,10 +1,40 @@
 <launch>
-    <rosparam command="load" file="$(find simulations)/config/config.yaml"/>
+    <!-- Declare the param_file arg -->
+    <arg name="param_file" default="$(find simulations)/config/config.yaml"/>
 
-    <!-- <include file="$(find simulations)/launch/turtlebot3_world.launch" /> -->
-    <include file="$(find map_manager)/launch/occupancy_map.launch" />
-    <include file="$(find realsense_node)/launch/realsense_publisher.launch" />
-    <include file="$(find simulations)/launch/python_scripts.launch" />
-    <include file="$(find gmpc_controller)/launch/gmpc.launch" />
-    <include file="$(find control)/launch/control.launch" />
+    <!-- Optionally load it using rosparam -->
+    <rosparam command="load" file="$(arg param_file)"/>
+
+    <!-- Include other launch files and pass loaded parameters -->
+    <!-- Example with turtlebot3_world.launch (commented out): -->
+    <!--
+    <include file="$(find simulations)/launch/turtlebot3_world.launch">
+        <arg name="param_file" value="$(arg param_file)"/>
+    </include>
+    -->
+
+    <!-- Example with occupancy_map.launch: -->
+    <include file="$(find map_manager)/launch/occupancy_map.launch">
+        <arg name="param_file" value="$(arg param_file)"/>
+    </include>
+
+    <!-- Example with realsense_publisher.launch: -->
+    <include file="$(find realsense_node)/launch/realsense_publisher.launch">
+        <arg name="param_file" value="$(arg param_file)"/>
+    </include>
+
+    <!-- Example with python_scripts.launch: -->
+    <include file="$(find simulations)/launch/python_scripts.launch">
+        <arg name="param_file" value="$(arg param_file)"/>
+    </include>
+
+    <!-- Example with gmpc.launch: -->
+    <include file="$(find gmpc_controller)/launch/gmpc.launch">
+        <arg name="param_file" value="$(arg param_file)"/>
+    </include>
+
+    <!-- Example with control.launch: -->
+    <include file="$(find control)/launch/control.launch">
+        <arg name="param_file" value="$(arg param_file)"/>
+    </include>
 </launch>

@@ -1,4 +1,6 @@
 <launch>
+    <arg name="param_file" />
+	<rosparam command="load" file="$(arg param_file)" />
     <!-- GMPC node for the robot -->
     <node name="gmpc_controller" pkg="gmpc_controller" type="gmpc_controller_node" output="screen"/>
 </launch>
