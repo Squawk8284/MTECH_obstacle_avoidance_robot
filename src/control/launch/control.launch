@@ -1,4 +1,4 @@
 <launch>    
-    <!-- Control node for the robot -->
+<!-- Control node for the robot -->
     <node name="control" pkg="control" type="control_node" output="screen"/>
 </launch>

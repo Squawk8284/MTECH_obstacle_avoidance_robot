@@ -48,32 +48,35 @@ Pose robotPose;
 int main(int argc, char **argv)
 {
 
-    ros::init(argc, argv, "control");
     try
     {
+        ros::init(argc, argv, "control");
         robotPort = createSerial("/dev/ttyRobot", 57600);
+
         ros::NodeHandle nh;
         ROS_INFO("Waiting for 5 seconds...");
         ros::Duration(5.0).sleep(); // Sleep for 2 seconds
         ROS_INFO("Starting.............\n\r");
+
         ros::param::param<std::string>("/cmd_vel_topic", cmd_vel_topic, "/cmd_vel");
         ros::param::param<std::string>("/odom_topic", odom_topic, "/odom");
 
         ros::param::param<float>("/start_x", start_x, 0.0f);
         ros::param::param<float>("/start_y", start_y, 0.0f);
         ros::param::param<float>("/start_theta", start_theta, 0.0f);
+
         ros::Rate loopRate(10);
 
         ros::Subscriber sub = nh.subscribe(cmd_vel_topic, 10, cmdVelCallback);
 
         tf2_ros::TransformBroadcaster odom_broadcaster;
-        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 10);
-
         geometry_msgs::TransformStamped odom_trans;
         nav_msgs::Odometry odom_msg;
 
+        ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 10);
+
         init();
-        
+
         while (ros::ok())
         {
             UpdateOdometry(odom_trans, odom_msg);
@@ -86,7 +89,7 @@ int main(int argc, char **argv)
     catch (const std::exception &e)
     {
         std::cerr << e.what() << '\n';
-        clearSerial(robotPort);
+        clearSerial(robotPort); // Close serial port
     }
 
     return 0;

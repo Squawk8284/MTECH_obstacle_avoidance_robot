@@ -279,8 +279,8 @@ bool getZAxisMagnetometer(serial::Serial *s, float *zMag)
  *
  * @param s Pointer to Serial Object
  * @param buzzer BUZZER_ON=0x01 or BUZZER_OFF = 0x00
- * @return true
- * @return false
+ * @return true if successful
+ * @return false if failed
  */
 bool setBuzzer(serial::Serial *s, uint8_t buzzer)
 {
@@ -294,21 +294,16 @@ bool setBuzzer(serial::Serial *s, uint8_t buzzer)
 // ---------------------------------------------------------------------------
 
 /**
- * @brief Get the orientation of the robot (yaw, pitch, roll) from the IMU.
+ * @brief 9 Axis Imu reading (Calibrated). Order is: acc x/y/z, mag x/y/z, gyr x/y/z.
  *
- * This function sets the IMU to output orientation angles in binary format
- * by sending the "#ob" command. It then sends "#f" to request one frame of data,
- * which is expected to be 12 bytes long (3 floats in little-endian order).
- * The angles (in degrees) are extracted into the provided pointers.
- *
- * @param s Pointer to the serial object connected to the IMU.
- * @param yaw Pointer to a float where the yaw (heading) will be stored.
- * @param pitch Pointer to a float where the pitch will be stored.
- * @param roll Pointer to a float where the roll will be stored.
- * @return true if the orientation is retrieved successfully.
- * @return false if any error occurs during communication or data retrieval.
+ * @param s Pointer to Serial Object
+ * @param acc Pointer to acceleromter[3] array
+ * @param mag Pointer to magnetometer[3] array
+ * @param gyro Pointer to gyroscope[3] array
+ * @return true if successful
+ * @return false if failed
  */
-bool getOrientationUSB(serial::Serial *s, float *yaw, float *pitch, float *roll)
+bool get9AxisImuUSB(serial::Serial *s, float *acc, float *mag, float *gyro)
 {
     if (!s || !s->isOpen())
     {
@@ -328,7 +323,7 @@ bool getOrientationUSB(serial::Serial *s, float *yaw, float *pitch, float *roll)
     s->flushInput();
     s->write(requestFrameCmd);
 
-    // Expecting 12 bytes: 4 bytes each for yaw, pitch, and roll.
+    // Expecting 12 bytes: 3 bytes each for acc, mag, and gyro x/y/z
     uint8_t buffer[36] = {0};
     std::size_t bytesRead = s->read(buffer, 36);
     if (bytesRead != 36)
@@ -339,15 +334,48 @@ bool getOrientationUSB(serial::Serial *s, float *yaw, float *pitch, float *roll)
     }
 
     // Convert the 12 bytes into 3 floats (assuming little-endian byte order)
-    std::memcpy(yaw, buffer + 24, 4);
-    std::memcpy(pitch, buffer + 28, 4);
-    std::memcpy(roll, buffer + 32, 4);
-
-    *yaw += 180;
-    *pitch += 180;
-    *roll += 180;
+    std::memcpy(acc, buffer + 0, 12);
+    std::memcpy(mag, buffer + 12, 12);
+    std::memcpy(gyro, buffer + 24, 12);
 
     return SUCCESS;
 }
 
+bool getYPRUSB(serial::Serial *s, float *yaw, float *pitch, float *roll)
+{
+    if (!s || !s->isOpen())
+    {
+        std::cerr << "❌ Serial port not open!" << std::endl;
+        return FAILURE;
+    }
+
+    // Set IMU to binary output mode for orientation angles
+    std::string setModeCmd = "#ob";
+    s->flushInput();
+    s->write(setModeCmd);
+    // Optional: wait a short delay for the IMU to process the command
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Request one output frame with orientation data
+    std::string requestFrameCmd = "#f";
+    s->flushInput();
+    s->write(requestFrameCmd);
+
+    // Expecting 12 bytes: 4 bytes each for yaw, mag, and gyro.
+    uint8_t buffer[12] = {0};
+    std::size_t bytesRead = s->read(buffer, 36);
+    if (bytesRead != 12)
+    {
+        std::cerr << "❌ Failed to read orientation data from IMU. Expected 12 bytes, got "
+                  << bytesRead << std::endl;
+        return FAILURE;
+    }
+
+    // Convert the 12 bytes into 3 floats (assuming little-endian byte order)
+    std::memcpy(yaw, buffer + 0, 4);
+    std::memcpy(pitch, buffer + 4, 4);
+    std::memcpy(roll, buffer + 8, 4);
+
+    return SUCCESS;
+}
 #endif //__INERTIAL_CONTROL_APIS__

@@ -1,5 +1,5 @@
 <launch>
-    <rosparam file="$(find simulations)/config/config.yaml"/>
+    <rosparam command="load" file="$(find simulations)/config/config.yaml"/>
 
     <!-- <include file="$(find simulations)/launch/turtlebot3_world.launch" /> -->
     <include file="$(find map_manager)/launch/occupancy_map.launch" />

@@ -8,8 +8,8 @@ import tf2_ros
 
 class ActualPathPublisher:
     def __init__(self):
-        actual_path_topic = rospy.get_param('actual_path_topic','/actual_path_topic')
-        latest_path_marker_topic = rospy.get_param('latest_path_marker_topic','/latest_path_marker_topic')
+        actual_path_topic = rospy.get_param('actual_path_topic','/actual_path')
+        latest_path_marker_topic = rospy.get_param('latest_path_marker_topic','/latest_path_marker')
         odom_topic = rospy.get_param('odom_topic','/odom')
 
         self.path_pub = rospy.Publisher(actual_path_topic, Path, queue_size=10)
