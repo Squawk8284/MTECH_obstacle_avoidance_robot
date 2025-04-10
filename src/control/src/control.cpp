@@ -30,7 +30,7 @@ serial::Serial *imuPort = nullptr;
 float axel_length_m;
 float wheel_dia_m;
 uint16_t CountsPerWheelRevolution;
-double WheelRevPerCounts;
+double distancePerCount;
 
 std::string cmd_vel_topic;
 std::string odom_topic;
