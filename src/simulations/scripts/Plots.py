@@ -26,9 +26,9 @@ class RecorderNode:
         self.lock = threading.Lock()
         self.recording_enabled = False
 
-        odom_topic = rospy.get_param('odom_topic','/odom')
-        cmd_vel_topic = rospy.get_param('cmd_vel_topic','/cmd_vel')
-        path_topic = rospy.get_param('path_topic','/path_topic')
+        odom_topic = rospy.get_param('/odom_topic','/odom')
+        cmd_vel_topic = rospy.get_param('/cmd_vel_topic','/cmd_vel')
+        path_topic = rospy.get_param('/path_topic','/path_topic')
 
         rospy.Subscriber(cmd_vel_topic, Twist, self.cb_cmd_vel, queue_size=10)
         rospy.Subscriber(odom_topic, Odometry, self.cb_odom, queue_size=10)

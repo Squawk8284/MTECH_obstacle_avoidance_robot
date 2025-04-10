@@ -47,7 +47,7 @@ def make_plots_for_folder(folder_path):
     csv_path = csv_files[0]
     df = pd.read_csv(csv_path)
 
-    t = df['time'].values
+    t = [i-df['time'].values[0] for i in df['time'].values]
     x = df['odom_pos_x'].values
     y = df['odom_pos_y'].values
     vx = df['cmd_lin_x'].values
@@ -64,12 +64,16 @@ def make_plots_for_folder(folder_path):
     # Plot 1: Odometry 3D only
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
-    scatter = ax.scatter(x, y, t, c=t, cmap='viridis', s=5, label="Odometry")
+    scatter = ax.scatter(x, y, t, color='black', s=5, label="Odometry")
 
     ax.set_xlabel('Odometry X [m]')
     ax.set_ylabel('Odometry Y [m]')
     ax.set_zlabel('Time [s]')
     ax.set_title('3D Odometry Position Over Time')
+    ax.scatter(x[0], y[0], t[0], 'r',s=100)
+    ax.text(x[0], y[0], t[0], s=f"Start {round(x[0],2),round(y[0],2),round(t[0],2)}",ha="right",va="bottom")
+    ax.text(x[-1], y[-1], t[-1], s=f"End {round(x[-1],2),round(y[-1],2),round(t[-1],2)}",ha="right",va="bottom")
+    ax.scatter(x[-1], y[-1], t[-1], 'g',s=100)
     ax.legend()
     plt.tight_layout()
     fig.savefig(os.path.join(folder_path, 'plot1_odometry.png'))

@@ -3,7 +3,7 @@
 	<rosparam command="load" file="$(arg param_file)" />
     
 <!-- Launch the Experiment Value node -->
-    <!-- <node name="Plots" pkg="simulations" type="Plots.py" output="screen"/> -->
+    <node name="Plots" pkg="simulations" type="Plots.py" output="screen"/>
 
 
 <!-- Launch the plotting node (Python script) -->
