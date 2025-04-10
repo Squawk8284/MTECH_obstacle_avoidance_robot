@@ -14,7 +14,7 @@
 // ---------------------------------------------------------------------------
 // Robot Parameters
 // ---------------------------------------------------------------------------
-#define AXEL_LENGTH_IN_MM (590)           // As per the hardware manual
+#define AXEL_LENGTH_IN_MM (690)           // As per the hardware manual
 #define WHEEL_DIA_IN_MM (260)             // As per the hardware manual
 #define TIRE_RUBBER_THREAD_DIA_IN_MM (80) // As per the hardware manual
 
@@ -54,8 +54,8 @@ int main(int argc, char **argv)
         robotPort = createSerial("/dev/ttyRobot", 57600);
 
         ros::NodeHandle nh;
-        ROS_INFO("Waiting for 5 seconds...");
-        ros::Duration(5.0).sleep(); // Sleep for 2 seconds
+        ROS_INFO("Waiting for 8 seconds...");
+        ros::Duration(8.0).sleep(); // Sleep for 2 seconds
         ROS_INFO("Starting.............\n\r");
 
         ros::param::param<std::string>("/cmd_vel_topic", cmd_vel_topic, "/cmd_vel");
