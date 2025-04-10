@@ -336,7 +336,7 @@ def Path_callback(msg):
         marker.pose.position.x, marker.pose.position.y = p
         marker.pose.position.z = 0.1
         marker.pose.orientation.w = 1.0
-        marker.scale.x = marker.scale.y = marker.scale.z = 0.3
+        marker.scale.x = marker.scale.y = marker.scale.z = 0.6
         marker.color.a ,marker.color.r ,marker.color.g, marker.color.b = (1.0, *color)
         marker_publisher.publish(marker)
 
