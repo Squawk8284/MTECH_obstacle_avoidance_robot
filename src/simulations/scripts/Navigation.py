@@ -8,10 +8,10 @@ from shapely.geometry import Polygon as SPoly
 from shapely.strtree import STRtree
 import numpy as np
 from visualization_msgs.msg import Marker
+from sensor_msgs.msg import PointCloud2
 from nav_msgs.msg import OccupancyGrid, Path, Odometry
-from geometry_msgs.msg import Polygon, Point32, PoseStamped
-import ast
-import os
+from std_msgs.msg import Header
+from geometry_msgs.msg import PoseStamped
 
 
 class TLBO():
@@ -35,6 +35,35 @@ class TLBO():
         self.theta = None
         self.path_x = None
         self.path_y = None
+        self.collision_count = 0
+        self.max_collision_count = 10
+        self.empty_msg = PointCloud2
+
+    def __reset_occupancy(self):
+        global occupany_publisher
+        global map_size
+        global map_resolution
+        global inflated_voxel_map_publisher
+
+        msg = OccupancyGrid()
+        msg.header = Header()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "map"
+
+        # Set metadata for a small (cleared) map
+        msg.info.resolution = map_resolution  # meters per cell
+        msg.info.width = map_size[0]
+        msg.info.height = map_size[1]
+        msg.info.origin.position.x = 0.0
+        msg.info.origin.position.y = 0.0
+        msg.info.origin.orientation.w = 1.0
+
+        # Set all cells to -1 (unknown) or 0 (free) to "clear" the map
+        msg.data = [-1] * (msg.info.width * msg.info.height)
+        occupany_publisher.publish(msg)
+        inflated_voxel_map_publisher.publish(self.empty_msg)
+        self.collision_count = 0
+        
 
     def __transformation(self, start, end):
         if self.theta:
@@ -239,6 +268,10 @@ class TLBO():
         if not check:
             return self.path_x, self.path_y
 
+        self.collision_count +=1
+        if self.collision_count>self.max_collision_count:
+            self.__reset_occupancy()
+
         self.__learner_boundary()
         self.__generate_learners()
         self.fxy_values = []
@@ -252,6 +285,8 @@ class TLBO():
         opt_idx = np.argmin(self.fxy_values)
         control_x = np.round(self.learners_x[opt_idx], 2)
         control_y = np.round(self.learners_y[opt_idx], 2)
+
+        self.obstacles = []
 
         self.path_x, self.path_y = self.__curve_points(control_x=control_x, control_y=control_y)
         return self.path_x, self.path_y
@@ -383,6 +418,8 @@ odom = rospy.get_param('odom_topic','/odom')
 path_topic = rospy.get_param('path_topic','/path_topic')
 marker_topic = rospy.get_param('marker_topic','/visualization_marker')
 occupancy_map_topic = rospy.get_param('occupancy_map_topic','/occupancy_map/2D_occupancy_map')
+map_resolution = rospy.get_param('map_resolution',0.1)
+map_size = rospy.get_param('map_size',[40, 40, 3])
 
 num_of_learners = rospy.get_param('num_of_learners')
 no_of_path_points = rospy.get_param('path_points')
@@ -398,6 +435,8 @@ rospy.on_shutdown(lambda: rospy.loginfo("Logger shutdown complete"))
 rospy.Subscriber(odom, Odometry, Odom_callback)
 path_planner = TLBO(start=start, end=end, bounds=bounds, num_of_learners=num_of_learners,path_points=no_of_path_points,subjects=subjects)
 rospy.Subscriber(occupancy_map_topic, OccupancyGrid, Path_callback)
+occupany_publisher = rospy.Publisher(occupancy_map_topic, OccupancyGrid,queue_size=10)
+inflated_voxel_map_publisher = rospy.Publisher('/occupancy_map/inflated_voxel_map', PointCloud2, queue_size=10)
 
 rospy.spin()
 

@@ -14,27 +14,27 @@ cmd_vel_topic: /cmd_vel
 # PARAMETERS
 bounds:
   - [0, 0]
-  - [0, 6]
-  - [4.32, 6]
-  - [4.32, 0]
+  - [0, 3]
+  - [3, 3.5]
+  - [3.5, 0]
 num_of_learners: 15
 subjects: 2
 path_points: 25
-start_x: 0.8
-start_y: 0.8
+start_x: 0.6
+start_y: 0.6
 start_theta: 0
-end_x: 3.32
-end_y: 5
+end_x: 2.4
+end_y: 2.9
 end_theta: 0
 sensor_input_mode: 0 # 0 camera 1: lidar
 localization_mode: 1 # 0: pose (default) 1: odom
 
 
 # robot size
-robot_size: [0.94, 0.67, 0.93]
+robot_size: [0.94, 0.67, 0.87]
 
 # Camera Parameters
-depth_intrinsics: [554.254691191187, 554.254691191187, 320.5, 240.5] # fx,  fy, cx, cy
+depth_intrinsics: [376.92462158203125, 376.92462158203125, 317.8880920410156, 238.76243591308594] # fx,  fy, cx, cy
 depth_scale_factor: 1000 # 1000 for Intel Realsense Camera
 depth_min_value: 0.5
 depth_max_value: 5.0
@@ -44,29 +44,29 @@ image_cols: 640
 image_rows: 480
 body_to_camera: [0.0,  0.0,  1.0,  0.43,
                 -1.0,  0.0,  0.0,  0.0 ,   
-                 0.0, -1.0,  0.0,  0.77,
+                 0.0, -1.0,  0.0,  0.05,
                  0.0,  0.0,  0.0,  1.0]
 
 # Raycasting
 raycast_max_length: 5.0
-p_hit: 0.85
-p_miss: 0.05
+p_hit: 0.7
+p_miss: 0.35
 p_min: 0.12
-p_max: 0.80
+p_max: 0.97
 p_occ: 0.80
 
 
 # Map
 map_resolution: 0.1
-ground_height: -0.1 # m
+ground_height: -0. # m
 map_size: [40, 40, 3] # meter. in x y z direction (reserved size)
 local_update_range: [5, 5, 5]
 local_bound_inflation: 0.0 # inflate local bound in meter
-clean_local_map: true
+clean_local_map: false
 
 # visualziation
 local_map_size: [40, 40, 6] # meter. in x y z direction (only for visualization)
-max_height_visualization: 2.5 # m
+max_height_visualization: 1.0 # m
 visualize_global_map: true
 verbose: false
 
