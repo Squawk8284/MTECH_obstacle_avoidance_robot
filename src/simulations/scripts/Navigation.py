@@ -8,9 +8,7 @@ from shapely.geometry import Polygon as SPoly
 from shapely.strtree import STRtree
 import numpy as np
 from visualization_msgs.msg import Marker
-from sensor_msgs.msg import PointCloud2
 from nav_msgs.msg import OccupancyGrid, Path, Odometry
-from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped
 
 
@@ -35,34 +33,6 @@ class TLBO():
         self.theta = None
         self.path_x = None
         self.path_y = None
-        self.collision_count = 0
-        self.max_collision_count = 10
-        self.empty_msg = PointCloud2
-
-    def __reset_occupancy(self):
-        global occupany_publisher
-        global map_size
-        global map_resolution
-        global inflated_voxel_map_publisher
-
-        msg = OccupancyGrid()
-        msg.header = Header()
-        msg.header.stamp = rospy.Time.now()
-        msg.header.frame_id = "map"
-
-        # Set metadata for a small (cleared) map
-        msg.info.resolution = map_resolution  # meters per cell
-        msg.info.width = map_size[0]
-        msg.info.height = map_size[1]
-        msg.info.origin.position.x = 0.0
-        msg.info.origin.position.y = 0.0
-        msg.info.origin.orientation.w = 1.0
-
-        # Set all cells to -1 (unknown) or 0 (free) to "clear" the map
-        msg.data = [-1] * (msg.info.width * msg.info.height)
-        occupany_publisher.publish(msg)
-        inflated_voxel_map_publisher.publish(self.empty_msg)
-        self.collision_count = 0
         
 
     def __transformation(self, start, end):
@@ -267,10 +237,6 @@ class TLBO():
         check = self.collision()
         if not check:
             return self.path_x, self.path_y
-
-        self.collision_count +=1
-        if self.collision_count>self.max_collision_count:
-            self.__reset_occupancy()
 
         self.__learner_boundary()
         self.__generate_learners()
