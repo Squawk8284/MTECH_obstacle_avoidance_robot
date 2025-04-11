@@ -19,7 +19,6 @@ class RecorderNode:
             'odom': None,
         }
 
-        # Path info (not for CSV)
         self.current_goal_position = None
 
         self.records = []
@@ -67,6 +66,17 @@ class RecorderNode:
         lv = self.latest['cmd_vel']
         od = self.latest['odom']
 
+        if od:
+            pos = od.pose.pose.position
+            x, y = pos.x, pos.y
+            z = pos.z
+            ori = od.pose.pose.orientation
+        else:
+            x = y = z = None
+            ori = None
+
+        goal_x, goal_y = self.current_goal_position if self.current_goal_position else (None, None)
+
         row = {
             'time': ts,
             'cmd_lin_x': lv.linear.x,
@@ -75,13 +85,15 @@ class RecorderNode:
             'cmd_ang_x': lv.angular.x,
             'cmd_ang_y': lv.angular.y,
             'cmd_ang_z': lv.angular.z,
-            'odom_pos_x': od.pose.pose.position.x if od else None,
-            'odom_pos_y': od.pose.pose.position.y if od else None,
-            'odom_pos_z': od.pose.pose.position.z if od else None,
-            'odom_ori_x': od.pose.pose.orientation.x if od else None,
-            'odom_ori_y': od.pose.pose.orientation.y if od else None,
-            'odom_ori_z': od.pose.pose.orientation.z if od else None,
-            'odom_ori_w': od.pose.pose.orientation.w if od else None,
+            'odom_pos_x': x,
+            'odom_pos_y': y,
+            'odom_pos_z': z,
+            'odom_ori_x': ori.x if ori else None,
+            'odom_ori_y': ori.y if ori else None,
+            'odom_ori_z': ori.z if ori else None,
+            'odom_ori_w': ori.w if ori else None,
+            'goal_x': goal_x,
+            'goal_y': goal_y
         }
         self.records.append(row)
 
@@ -97,7 +109,6 @@ class RecorderNode:
                 rospy.signal_shutdown('Goal reached')
 
     def on_shutdown(self):
-        """Save CSV on shutdown if any data is recorded"""
         if not self.recording_enabled or not self.records:
             rospy.loginfo("No data recorded. Exiting without saving.")
             return
@@ -121,7 +132,6 @@ class RecorderNode:
             rospy.loginfo(f"Recorded {len(df)} samples. Saved to {csv_path}")
         except Exception as e:
             rospy.logerr(f"Error saving CSV: {e}")
-
 
 if __name__ == '__main__':
     try:
