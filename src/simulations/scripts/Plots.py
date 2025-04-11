@@ -142,6 +142,6 @@ class RecorderNode:
 if __name__ == '__main__':
     try:
         while not rospy.is_shutdown():
-            RecorderNode(goal_tolerance=0.05)
+            RecorderNode(goal_tolerance=0.2)
     except rospy.ROSInterruptException:
         rospy.loginfo("ROS Interrupt received. Shutting down and saving data...")
