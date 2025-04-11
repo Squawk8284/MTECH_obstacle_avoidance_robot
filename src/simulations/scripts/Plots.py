@@ -19,7 +19,6 @@ class RecorderNode:
             'odom': None,
         }
 
-        self.current_goal_position = None
 
         self.records = []
         self.lock = threading.Lock()
@@ -28,6 +27,10 @@ class RecorderNode:
         odom_topic = rospy.get_param('/odom_topic','/odom')
         cmd_vel_topic = rospy.get_param('/cmd_vel_topic','/cmd_vel')
         path_topic = rospy.get_param('/path_topic','/path_topic')
+        end_x = rospy.get_param('/end_x','/end_x')
+        end_y = rospy.get_param('/end_y','/end_y')
+
+        self.current_goal_position = (end_x,end_y)
 
         rospy.Subscriber(cmd_vel_topic, Twist, self.cb_cmd_vel, queue_size=10)
         rospy.Subscriber(odom_topic, Odometry, self.cb_odom, queue_size=10)
@@ -60,6 +63,9 @@ class RecorderNode:
 
     def _maybe_record(self):
         if not self.recording_enabled:
+            return
+
+        if not self.latest['cmd_vel'] or not self.latest['odom']:
             return
 
         ts = rospy.Time.now().to_sec()
@@ -135,6 +141,7 @@ class RecorderNode:
 
 if __name__ == '__main__':
     try:
-        RecorderNode(goal_tolerance=0.2)
+        while not rospy.is_shutdown():
+            RecorderNode(goal_tolerance=0.05)
     except rospy.ROSInterruptException:
         rospy.loginfo("ROS Interrupt received. Shutting down and saving data...")
