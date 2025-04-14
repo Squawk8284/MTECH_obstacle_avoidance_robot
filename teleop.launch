@@ -1,4 +1,13 @@
 <launch>
-    <include file="$(find control)/launch/control.launch" />
+    <!-- Declare the param_file arg -->
+    <arg name="param_file" default="$(find simulations)/config/config.yaml"/>
+
+    <!-- Optionally load it using rosparam -->
+    <rosparam command="load" file="$(arg param_file)"/>
+
+    <include file="$(find control)/launch/control.launch">
+        <arg name="param_file" value="$(arg param_file)"/>
+    </include>
+    
     <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_keyboard" output="screen"/>
 </launch>

@@ -69,7 +69,7 @@ void init()
     getWheelDiameter_m(robotPort, &wheel_dia_m);
     getAxleLength_m(robotPort, &axel_length_m);
     clearEncoderCounts(robotPort);
-    getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
+    CountsPerWheelRevolution =2100; //getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
     distancePerCount = (wheel_dia_m * M_PI) / CountsPerWheelRevolution;
     robotPose.X = start_x;
     robotPose.Y = start_y;

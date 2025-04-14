@@ -401,8 +401,5 @@ rospy.on_shutdown(lambda: rospy.loginfo("Logger shutdown complete"))
 rospy.Subscriber(odom, Odometry, Odom_callback)
 path_planner = TLBO(start=start, end=end, bounds=bounds, num_of_learners=num_of_learners,path_points=no_of_path_points,subjects=subjects)
 rospy.Subscriber(occupancy_map_topic, OccupancyGrid, Path_callback)
-occupany_publisher = rospy.Publisher(occupancy_map_topic, OccupancyGrid,queue_size=10)
-inflated_voxel_map_publisher = rospy.Publisher('/occupancy_map/inflated_voxel_map', PointCloud2, queue_size=10)
-
 rospy.spin()
 
