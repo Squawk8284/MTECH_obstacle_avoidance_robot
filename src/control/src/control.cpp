@@ -15,7 +15,7 @@
 // Robot Parameters
 // ---------------------------------------------------------------------------
 #define AXEL_LENGTH_IN_MM (690)           // As per the hardware manual
-#define WHEEL_DIA_IN_MM (230)             // As per the hardware manual
+#define WHEEL_DIA_IN_MM (240)             // As per the hardware manual
 #define TIRE_RUBBER_THREAD_DIA_IN_MM (80) // As per the hardware manual
 
 // ---------------------------------------------------------------------------
