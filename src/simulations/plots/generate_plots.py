@@ -47,35 +47,29 @@ def make_plots_for_folder(folder_path):
     wz = df['cmd_ang_z'].values
 
     # ------------------------------
-    # Plot 1: 3D Odometry Over Time
+    # Plot 1: 3D Odometry Over Time (X and Y Swapped)
     # ------------------------------
     fig = plt.figure(figsize=(10, 8), constrained_layout=True)
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x, y, t, color='black', s=5, label="Odometry")
-    ax.set_xlabel('Odometry X [m]')
-    ax.set_ylabel('Odometry Y [m]')
+    ax.scatter(y, x, t, color='black', s=5, label="Odometry")
+    ax.set_xlabel('Odometry Y [m]')
+    ax.set_ylabel('Odometry X [m]')
     ax.set_zlabel('Time [s]')
     ax.set_title('3D Odometry Position Over Time')
 
-    # Annotate start and end points.
-    ax.scatter(x[0], y[0], t[0], c='r', s=100, label="Start Point")
-    ax.text(x[0], y[0], t[0],
+    ax.scatter(y[0], x[0], t[0], c='r', s=100, label="Start Point")
+    ax.text(y[0], x[0], t[0],
             s=f"Start ({x[0]:.2f}, {y[0]:.2f}, {t[0]:.2f})",
             ha="right", va="bottom")
-    ax.text(x[-1], y[-1], t[-1],
+    ax.text(y[-1], x[-1], t[-1],
             s=f"End ({x[-1]:.2f}, {y[-1]:.2f}, {t[-1]:.2f})",
             ha="right", va="bottom")
-    ax.scatter(x[-1], y[-1], t[-1], c='g', s=100, label="End Point")
+    ax.scatter(y[-1], x[-1], t[-1], c='g', s=100, label="End Point")
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
-    
-    # Reverse the 3D x-axis so positive x values are on the left.
-    current_xlim = ax.get_xlim()
-    ax.set_xlim(current_xlim[::-1])
 
-    ax.set_xlim(5, 0)  # Reversed x-axis for positive on left
-    ax.set_ylim(0, 6)
-    
-    # Save without bbox_inches='tight' to avoid clipping.
+    ax.set_xlim(6, 0)  # Y-axis range
+    ax.set_ylim(0, 5)  # X-axis reversed
+
     fig.savefig(os.path.join(folder_path, f'plot1_odometry_{folder_name}.png'))
     plt.close(fig)
 
@@ -130,31 +124,27 @@ def make_plots_for_folder(folder_path):
     plt.close(fig)
 
     # ------------------------------
-    # Plot 5: 2D Motion (with x-axis reversed)
+    # Plot 5: 2D Motion (X and Y Swapped)
     # ------------------------------
     fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(x, y, label='2D Motion', color='tab:red')
-    ax.scatter(x[0], y[0], c='r', s=100, label='Start')
-    ax.scatter(x[-1], y[-1], c='g', s=100, label='End')
+    ax.plot(y, x, label='2D Motion', color='tab:red')
+    ax.scatter(y[0], x[0], c='r', s=100, label='Start')
+    ax.scatter(y[-1], x[-1], c='g', s=100, label='End')
 
-    # Annotate start and end with offset coordinates
     offset_x, offset_y = 0.3, 0.3
-    ax.text(x[0] - offset_x, y[0] + offset_y,
+    ax.text(y[0] - offset_y, x[0] + offset_x,
             s=f"Start ({x[0]:.2f}, {y[0]:.2f})",
             ha="right", va="bottom", fontsize=9)
-    ax.text(x[-1] + offset_x, y[-1] - offset_y,
+    ax.text(y[-1] + offset_y, x[-1] - offset_x,
             s=f"End ({x[-1]:.2f}, {y[-1]:.2f})",
             ha="left", va="top", fontsize=9)
 
-    ax.set_xlabel("Odometry X [m]")
-    ax.set_ylabel("Odometry Y [m]")
+    ax.set_xlabel("Odometry Y [m]")
+    ax.set_ylabel("Odometry X [m]")
     ax.set_title("2D Motion: Path from Start to End")
+    ax.set_xlim(6, 0)  # Y-axis range
+    ax.set_ylim(0, 5)  # X-axis reversed
 
-    # Set axis limits (x: -5 to 5 reversed, y: -6 to 6)
-    ax.set_xlim(5, 0)  # Reversed x-axis for positive on left
-    ax.set_ylim(0, 6)
-
-    # Move y-axis ticks and label to the right
     ax.yaxis.set_ticks_position("right")
     ax.yaxis.set_label_position("right")
 
@@ -162,9 +152,6 @@ def make_plots_for_folder(folder_path):
     plt.tight_layout()
     fig.savefig(os.path.join(folder_path, f'plot5_2d_motion_{folder_name}.png'), bbox_inches='tight')
     plt.close(fig)
-
-
-
 
     print(f"✅ Plots saved in {folder_path}")
 
