@@ -73,7 +73,7 @@ void init()
     distancePerCount = (wheel_dia_m * M_PI) / CountsPerWheelRevolution;
     robotPose.X = start_x;
     robotPose.Y = start_y;
-    robotPose.Theta = start_theta;
+    robotPose.Theta = start_theta * (M_PI/180);
 }
 
 void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
