@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 from mpl_toolkits.mplot3d import Axes3D
 
 
@@ -35,7 +36,6 @@ def make_plots_for_folder(folder_path):
     if not csv_files:
         print(f"No CSV found in {folder_path}, skipping.")
         return
-
     csv_path = csv_files[0]
     df = pd.read_csv(csv_path)
 
@@ -131,6 +131,33 @@ def make_plots_for_folder(folder_path):
     ax.scatter(y[0], x[0], c='r', s=100, label='Start')
     ax.scatter(y[-1], x[-1], c='g', s=100, label='End')
 
+    ### New Part
+    obstacles = {'1':None, '2':[(2.2, 2.7), (2.5, 2.4), (2.5, 2.7), (2.5, 3.0), (2.8,2.7)], '3':[(2.75, 1.60), (0.95, 3.43), (2.8, 5.2)]}
+    humans = {'1':[(3.78, 0.35), (2.65, 3.35), (1.29, 4.3)], '2':[(2.2, 1.35), (4.02, 0.88), (1.9, 5.36)], '3':[(4.12, 0.88), (1.1, 5.2), (2.8, 4.3)]}
+
+    humans_present = False
+    if 'b' in folder_name:
+        humans_present = True
+    scenario = folder_name[0]
+
+    if obstacles[scenario]:
+        obstacle = np.array(obstacles[scenario])
+        for i, obs in enumerate(obstacle):
+
+            circle = Circle((obs[1], obs[0]), radius=0.15, edgecolor='orange', label="Static obstacle" if i==0 else None, facecolor='orange')
+            safety_circle = Circle((obs[1], obs[0]), radius=0.73, ls='--', edgecolor='orange', facecolor='none', label="Static safety distance" if i==0 else None)
+            ax.add_patch(safety_circle)
+            ax.add_patch(circle)
+
+    if humans_present:
+        human = np.array(humans[scenario])
+        for i, hum in enumerate(human):
+            circle = Circle((hum[1], hum[0]), radius=0.19, edgecolor='b', label="Stationary Human" if i == 0 else None)
+            safety_circle = Circle((hum[1], hum[0]), radius=0.77, ls='--', edgecolor='b', facecolor='none', label="Human safety distance" if i == 0 else None)
+            ax.add_patch(safety_circle)
+            ax.add_patch(circle)
+
+    ###
     offset_x, offset_y = 0.3, 0.3
     ax.text(y[0] - offset_y, x[0] + offset_x,
             s=f"Start ({x[0]:.2f}, {y[0]:.2f})",
@@ -154,7 +181,6 @@ def make_plots_for_folder(folder_path):
     plt.close(fig)
 
     print(f"✅ Plots saved in {folder_path}")
-
 
 def main():
     base_dir = os.path.dirname(__file__)
