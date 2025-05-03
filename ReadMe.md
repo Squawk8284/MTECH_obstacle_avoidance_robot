@@ -123,12 +123,3 @@ This will load the required parameters and include launch files for all packages
 - **Dynamic Obstacles**: Published as positions and velocities.
 - **Data Logs**: CSV files containing time-stamped robot data for analysis.
 
----
-
-## Acknowledgments
-
-- ROS community for providing tools and libraries.
-- Contributors: Zhefan Xu, Xiaoyang Zhan, and others from CERLAB at CMU.
-- Python libraries like `numpy`, `shapely`, and `pandas` for computational support.
-
-For any issues or contributions, feel free to open an issue or submit a pull request.
