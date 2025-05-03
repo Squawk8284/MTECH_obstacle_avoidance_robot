@@ -79,8 +79,11 @@ class TLBO():
         
         for coordinates in obstacles:
             obstacle = SPoly(coordinates)
+            centroid = obstacle.centroid
             safety = obstacle.buffer(self.delta)
-            self.obstacles.append({'obstacle':obstacle, 'safety_polygon':safety})
+            boundary_coords = list(safety.exterior.coords)
+            distance = max(centroid.distance(Point(p)) for p in boundary_coords)
+            self.obstacles.append({'obstacle':obstacle, 'safety_polygon':safety, 'centroid':centroid, 'distance':distance + self.delta})
 
         if not hasattr(self, '_spatial_index') or len(self._spatial_index)!=len(self.obstacles):
             safety = [obs['safety_polygon'] for obs in self.obstacles]
@@ -136,20 +139,19 @@ class TLBO():
         
         penalty = 0
         path_points = [Point(x,y) for x,y in zip(path_x, path_y)]
-
+ 
         for point in path_points:
             nearby = self._spatial_index.query(point)
             for polygon_idx in nearby:
                 if self.obstacles[polygon_idx]['safety_polygon'].contains(point):
-                    penalty += 1 / point.distance(self.obstacles[polygon_idx]['safety_polygon'].boundary)
-                    break
+                    d = point.distance(self.obstacles[polygon_idx]['centroid'])
+                    penalty += 1 / d - 1 / self.obstacles[polygon_idx]['distance']
             
             if not self.bounds_polygon['safety_polygon'].contains(point):
-                d =  point.distance(self.bounds_polygon['safety_polygon'].boundary)
-                if d >= self.delta:
-                    penalty += d
-                else:
-                    penalty += 1 / d
+                d =  point.distance(self.bounds_polygon['centroid'])
+                dp = 1/d - 1/self.bounds_polygon['distance']
+                penalty += max(d, dp)
+ 
         return penalty
 
     def __f_xy(self, control_points_x, control_points_y):
