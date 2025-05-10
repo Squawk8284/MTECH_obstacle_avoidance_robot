@@ -12,6 +12,7 @@ import matplotlib.image as mpimg
 from matplotlib.patches import Circle
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 for 3D projection
+from matplotlib.lines import Line2D
  
 def parse_path_topic_points(path_str):
     """Parse a 'x1,y1;x2,y2;...' string into two numpy arrays: x and y."""
@@ -173,6 +174,7 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
  
     scenario = folder_name[:2]  # e.g., '2b'
     scenario_digit = folder_name[0]  # e.g., '2'
+    scenario_letter = folder_name[1]  # e.g., 'b'
  
     # Static Obstacles: circle + icon
     if static_obstacles.get(scenario):
@@ -210,16 +212,29 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
             ax.add_artist(ab_hum)
             ax.add_patch(safety)
  
- 
+    # Collect existing handles and labels
+    handles, labels = ax.get_legend_handles_labels()
+
+    # Append the custom dummy entry
+    if 'c' in scenario_letter:
+        human1 = Line2D([0], [0], linestyle='--', color='tab:blue',linewidth=0.5)
+        human2 = Line2D([0], [0], linestyle='--', color='tab:brown',linewidth=0.5)
+        human3 = Line2D([0], [0], linestyle='--', color='tab:green',linewidth=0.5)
+        handles.extend([human1, human2, human3])
+        labels.extend(['Human Path 1', 'Human Path 2', 'Human Path 3'])
+
+
     ax.set_xlabel("Odometry Y [m]")
     ax.set_ylabel("Odometry X [m]")
     ax.set_title("2D Motion: Path from Start to End")
     ax.set_xlim(6, 0)
-    ax.set_ylim(0, 6)
+    ax.set_ylim(0, 5)
     ax.grid(True)
     ax.yaxis.set_ticks_position("right")
     ax.yaxis.set_label_position("right")
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+    legend_dict = dict(zip(labels, handles))
+    ax.legend(handles=legend_dict.values(), labels=legend_dict.keys(), loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+
  
     fig.savefig(os.path.join(folder_path, f'plot5_2d_motion_{folder_name}.png'),
                 bbox_inches='tight')
@@ -228,7 +243,7 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
     print(f"✅ Plots saved in {folder_path}")
  
 def main():
-    base_dir     = os.path.dirname(__file__)
+    base_dir = os.path.abspath(os.path.dirname(__file__)) if '__file__' in globals() else os.getcwd()
     human_path   = os.path.join(base_dir, 'human_icon.png')
     obstacle_path= os.path.join(base_dir, 'obstacle.png')
     human_img    = mpimg.imread(human_path)
