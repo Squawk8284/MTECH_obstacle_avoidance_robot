@@ -21,8 +21,10 @@
 #include <ros/ros.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/Imu.h>
 
 // ---------------------------------------------------------------------------
 // Struct Variables
@@ -45,7 +47,7 @@ extern serial::Serial *imuPort;
 extern float axel_length_m;
 extern float wheel_dia_m;
 extern uint16_t CountsPerWheelRevolution;
-extern double WheelRevPerCounts;
+extern double distancePerCount;
 extern Pose robotPose;
 constexpr double ALPHA = 0.98;
 
@@ -68,10 +70,10 @@ void init()
     getAxleLength_m(robotPort, &axel_length_m);
     clearEncoderCounts(robotPort);
     getEncoderResolutionCountPerWheelRevolution(robotPort, &CountsPerWheelRevolution);
-    WheelRevPerCounts = static_cast<double>(1.0 / CountsPerWheelRevolution);
+    distancePerCount = (wheel_dia_m * M_PI) / CountsPerWheelRevolution;
     robotPose.X = start_x;
     robotPose.Y = start_y;
-    robotPose.Theta = start_theta;
+    robotPose.Theta = start_theta * (M_PI/180);
 }
 
 void CmdLinearVelocity_mps(float linearVelocity, float angularVelocity)
@@ -103,8 +105,8 @@ void UpdateOdometry(geometry_msgs::TransformStamped &odom_trans, nav_msgs::Odome
     prevLeftEncoderCounts = currentLeftEncoderCounts;
     prevRightEncoderCounts = currentRightEncoderCounts;
 
-    double distLeft = (WheelRevPerCounts) * (deltaLeft) * (wheel_dia_m * M_PI);
-    double distRight = (WheelRevPerCounts) * (deltaRight) * (wheel_dia_m * M_PI);
+    double distLeft = (distancePerCount) * (deltaLeft);
+    double distRight = (distancePerCount) * (deltaRight);
 
     float delta_centre = (distLeft + distRight) / 2.0;
     float delta_theta = (distRight - distLeft) / axel_length_m;
@@ -113,6 +115,8 @@ void UpdateOdometry(geometry_msgs::TransformStamped &odom_trans, nav_msgs::Odome
     robotPose.Y += delta_centre * sin(robotPose.Theta + (delta_theta / 2.0));
     robotPose.Z = 0;
     robotPose.Theta += delta_theta;
+
+    robotPose.Theta = atan2(sin(robotPose.Theta), cos(robotPose.Theta));
 
     getLeftMotorVelocity_mps(robotPort, &LeftVelocity);
     getRightMotorVelocity_mps(robotPort, &RightVelocity);

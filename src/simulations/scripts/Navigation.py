@@ -9,9 +9,7 @@ from shapely.strtree import STRtree
 import numpy as np
 from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid, Path, Odometry
-from geometry_msgs.msg import Polygon, Point32, PoseStamped
-import ast
-import os
+from geometry_msgs.msg import PoseStamped
 
 
 class TLBO():
@@ -35,6 +33,7 @@ class TLBO():
         self.theta = None
         self.path_x = None
         self.path_y = None
+        
 
     def __transformation(self, start, end):
         if self.theta:
@@ -80,8 +79,11 @@ class TLBO():
         
         for coordinates in obstacles:
             obstacle = SPoly(coordinates)
+            centroid = obstacle.centroid
             safety = obstacle.buffer(self.delta)
-            self.obstacles.append({'obstacle':obstacle, 'safety_polygon':safety})
+            boundary_coords = list(safety.exterior.coords)
+            distance = max(centroid.distance(Point(p)) for p in boundary_coords)
+            self.obstacles.append({'obstacle':obstacle, 'safety_polygon':safety, 'centroid':centroid, 'distance':distance + self.delta})
 
         if not hasattr(self, '_spatial_index') or len(self._spatial_index)!=len(self.obstacles):
             safety = [obs['safety_polygon'] for obs in self.obstacles]
@@ -137,20 +139,19 @@ class TLBO():
         
         penalty = 0
         path_points = [Point(x,y) for x,y in zip(path_x, path_y)]
-
+ 
         for point in path_points:
             nearby = self._spatial_index.query(point)
             for polygon_idx in nearby:
                 if self.obstacles[polygon_idx]['safety_polygon'].contains(point):
-                    penalty += 1 / point.distance(self.obstacles[polygon_idx]['safety_polygon'].boundary)
-                    break
+                    d = point.distance(self.obstacles[polygon_idx]['centroid'])
+                    penalty += 1 / d - 1 / self.obstacles[polygon_idx]['distance']
             
             if not self.bounds_polygon['safety_polygon'].contains(point):
-                d =  point.distance(self.bounds_polygon['safety_polygon'].boundary)
-                if d >= self.delta:
-                    penalty += d
-                else:
-                    penalty += 1 / d
+                d =  point.distance(self.bounds_polygon['centroid'])
+                dp = 1/d - 1/self.bounds_polygon['distance']
+                penalty += max(d, dp)
+ 
         return penalty
 
     def __f_xy(self, control_points_x, control_points_y):
@@ -253,6 +254,8 @@ class TLBO():
         control_x = np.round(self.learners_x[opt_idx], 2)
         control_y = np.round(self.learners_y[opt_idx], 2)
 
+        self.obstacles = []
+
         self.path_x, self.path_y = self.__curve_points(control_x=control_x, control_y=control_y)
         return self.path_x, self.path_y
     
@@ -336,7 +339,7 @@ def Path_callback(msg):
         marker.pose.position.x, marker.pose.position.y = p
         marker.pose.position.z = 0.1
         marker.pose.orientation.w = 1.0
-        marker.scale.x = marker.scale.y = marker.scale.z = 0.3
+        marker.scale.x = marker.scale.y = marker.scale.z = 0.6
         marker.color.a ,marker.color.r ,marker.color.g, marker.color.b = (1.0, *color)
         marker_publisher.publish(marker)
 
@@ -383,6 +386,8 @@ odom = rospy.get_param('odom_topic','/odom')
 path_topic = rospy.get_param('path_topic','/path_topic')
 marker_topic = rospy.get_param('marker_topic','/visualization_marker')
 occupancy_map_topic = rospy.get_param('occupancy_map_topic','/occupancy_map/2D_occupancy_map')
+map_resolution = rospy.get_param('map_resolution',0.1)
+map_size = rospy.get_param('map_size',[40, 40, 3])
 
 num_of_learners = rospy.get_param('num_of_learners')
 no_of_path_points = rospy.get_param('path_points')
@@ -398,6 +403,5 @@ rospy.on_shutdown(lambda: rospy.loginfo("Logger shutdown complete"))
 rospy.Subscriber(odom, Odometry, Odom_callback)
 path_planner = TLBO(start=start, end=end, bounds=bounds, num_of_learners=num_of_learners,path_points=no_of_path_points,subjects=subjects)
 rospy.Subscriber(occupancy_map_topic, OccupancyGrid, Path_callback)
-
 rospy.spin()
 

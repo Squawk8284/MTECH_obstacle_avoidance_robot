@@ -1,6 +1,6 @@
 
 # TOPICS
-actual_path_topic: /actual_path_topic
+actual_path_topic: /actual_path
 path_topic: /path_topic
 marker_topic: /visualization_marker
 latest_path_marker_topic: /latest_path_marker
@@ -22,7 +22,7 @@ subjects: 2
 path_points: 25
 start_x: 0.6
 start_y: 0.6
-start_theta: 0
+start_theta: 0 # in degrees
 end_x: 2.4
 end_y: 2.9
 end_theta: 0
@@ -31,7 +31,7 @@ localization_mode: 1 # 0: pose (default) 1: odom
 
 
 # robot size
-robot_size: [0.5, 0.5, 0.3]
+robot_size: [0.94, 0.67, 0.93]
 
 # Camera Parameters
 depth_intrinsics: [554.254691191187, 554.254691191187, 320.5, 240.5] # fx,  fy, cx, cy
@@ -42,9 +42,9 @@ depth_filter_margin: 2 # filter
 depth_skip_pixel: 2 # filter
 image_cols: 640
 image_rows: 480
-body_to_camera: [0.0,  0.0,  1.0,  0.09,
-                -1.0,  0.0,  0.0,  0.0 ,   
-                 0.0, -1.0,  0.0,  0.095,
+body_to_camera: [0.0,  0.0,  1.0,  0.43,
+                -1.0,  0.0,  0.0,  0.0 ,
+                 0.0, -1.0,  0.0,  0.93,
                  0.0,  0.0,  0.0,  1.0]
 
 # Raycasting
@@ -52,16 +52,16 @@ raycast_max_length: 5.0
 p_hit: 0.70
 p_miss: 0.35
 p_min: 0.12
-p_max: 0.97
+p_max: 0.80
 p_occ: 0.80
 
 
 # Map
 map_resolution: 0.1
-ground_height: -0.1 # m
+ground_height: 0.0 # m
 map_size: [40, 40, 3] # meter. in x y z direction (reserved size)
 local_update_range: [5, 5, 5]
-local_bound_inflation: 1.0 # inflate local bound in meter
+local_bound_inflation: 0.0 # inflate local bound in meter
 clean_local_map: true
 
 # visualziation

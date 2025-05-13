@@ -1,3 +1,5 @@
 <launch>
+	<arg name="param_file" />
+	<rosparam command="load" file="$(arg param_file)" ns="/occupancy_map" />
 	<node pkg="map_manager" type="occupancy_map_node" name="occupancy_map_node" output="screen" />
 </launch>
