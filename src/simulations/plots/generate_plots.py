@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, Rectangle
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 for 3D projection
 from matplotlib.lines import Line2D
@@ -46,6 +46,9 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
     y  = df['odom_pos_y'].values
     vx = df['cmd_lin_x'].values
     wz = df['cmd_ang_z'].values
+
+    fontsize = 14
+    labelsize = 12
  
     # ------------------------------
     # Plot 1: 3D Odometry Over Time
@@ -56,16 +59,17 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
     ax.scatter(y[0], x[0], t[0], c='r', s=100, label="Start")
     ax.scatter(y[-1], x[-1], t[-1], c='g', s=100, label="End", marker='x')
     ax.text(y[0], x[0], t[0], f"Start ({x[0]:.2f},{y[0]:.2f},{t[0]:.2f})",
-            ha="right", va="bottom")
+            ha="right", va="bottom", fontsize=fontsize)
     ax.text(y[-1], x[-1], t[-1], f"End   ({x[-1]:.2f},{y[-1]:.2f},{t[-1]:.2f})",
-            ha="right", va="bottom")
-    ax.set_xlabel('Odometry Y [m]')
-    ax.set_ylabel('Odometry X [m]')
-    ax.set_zlabel('Time [s]')
-    ax.set_title('3D Odometry Position Over Time')
+            ha="right", va="bottom", fontsize=fontsize)
+    ax.set_xlabel('Odometry Y [m]', fontsize=fontsize)
+    ax.set_ylabel('Odometry X [m]', fontsize=fontsize)
+    ax.set_zlabel('Time [s]', fontsize=fontsize)
+    ax.set_title('3D Odometry Position Over Time', fontsize=fontsize)
+    ax.tick_params(axis='both', which='major', labelsize=labelsize)
     ax.set_xlim(6, 0)
     ax.set_ylim(0, 5)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2, fontsize=fontsize)
     fig.savefig(os.path.join(folder_path, f'plot1_odometry_{folder_name}.png'))
     plt.close(fig)
  
@@ -85,12 +89,13 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
  
     # Optionally mark the final zero point
     ax.scatter(final_time, 0.0, color='tab:blue')
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel("Linear Velocity [m/s]")
-    ax.set_title("Linear Velocity (cmd_lin_x)")
+    ax.set_xlabel("Time [s]", fontsize=fontsize)
+    ax.set_ylabel("Linear Velocity [m/s]", fontsize=fontsize)
+    ax.set_title("Linear Velocity (cmd_lin_x)", fontsize=fontsize)
+    ax.tick_params(axis='both', which='major', labelsize=labelsize)
     ax.set_ylim(-0.5, 0.5)
     ax.axhline(0, color='gray', linestyle='--', linewidth=0.5)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15))
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), fontsize=fontsize)
     fig.savefig(os.path.join(folder_path, f'plot2_linear_velocity_{folder_name}.png'),
                 bbox_inches='tight')
     plt.close(fig)
@@ -111,12 +116,12 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
  
     # Optionally mark the final zero point
     ax.scatter(final_time, 0.0, color='tab:orange')
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel("Angular Velocity [rad/s]")
-    ax.set_title("Angular Velocity (cmd_ang_z)")
+    ax.set_xlabel("Time [s]", fontsize=fontsize)
+    ax.set_ylabel("Angular Velocity [rad/s]", fontsize=fontsize)
+    ax.set_title("Angular Velocity (cmd_ang_z)", fontsize=fontsize)
     ax.set_ylim(-1.5, 1.5)
     ax.axhline(0, color='gray', linestyle='--', linewidth=0.5)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15))
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), fontsize=fontsize)
     fig.savefig(os.path.join(folder_path, f'plot3_angular_velocity_{folder_name}.png'),
                 bbox_inches='tight')
     plt.close(fig)
@@ -130,11 +135,12 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.plot(t, dist_from_start, label='Distance from Start', color='tab:purple')
     ax.plot(t, error_from_goal, '--', label='Goal Error', color='tab:green')
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel("Distance [m]")
-    ax.set_title("Error from Goal & Distance from Start Over Time")
+    ax.set_xlabel("Time [s]", fontsize=fontsize)
+    ax.set_ylabel("Distance [m]", fontsize=fontsize)
+    ax.set_title("Error from Goal & Distance from Start Over Time", fontsize=fontsize)
+    ax.tick_params(axis='both', which='major', labelsize=labelsize)
     ax.axhline(0, color='gray', linestyle='--', linewidth=0.5)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2, fontsize=fontsize)
     fig.savefig(os.path.join(folder_path, f'plot4_error_and_start_distance_{folder_name}.png'),
                 bbox_inches='tight')
     plt.close(fig)
@@ -150,19 +156,22 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
     ax.annotate(
     f"Start ({x[0]:.2f}, {y[0]:.2f})",
     xy=(y[0], x[0]),
-    xytext=(-50, -10),  # (x_offset, y_offset) in points
+    xytext=(-100, -10),  # (x_offset, y_offset) in points
     textcoords='offset points',
     ha="left", va="top",
-    fontsize=9)
+    fontsize=fontsize)
  
     ax.annotate(
     f"End   ({x[-1]:.2f},{y[-1]:.2f})",
     xy=(y[-1], x[-1]),
-    xytext=(50, 10),  # (x_offset, y_offset) in points
+    xytext=(100, 10),  # (x_offset, y_offset) in points
     textcoords='offset points',
     ha="right", va="bottom",
-    fontsize=9)
- 
+    fontsize=fontsize)
+
+    # Add a rectangle: (x, y) is the bottom-left corner, followed by width and height
+    rect = Rectangle((0,0), 6, 5, linewidth=1.5, edgecolor='black', facecolor='none', linestyle='--', label='Workspace')
+    ax.add_patch(rect)
  
     # Static obstacles: circles + icon
     obstacle_data = {}
@@ -190,9 +199,15 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
                 obs_icon, (ox, oy),
                 frameon=False, box_alignment=(0.5, 0.5)
             )
+            # Clip both circles at the boundary rectangle:
+            circ.set_clip_path(rect.get_path(), rect.get_transform())
+            safe.set_clip_path(rect.get_path(), rect.get_transform())
+
+
             ax.add_patch(circ)
             ax.add_artist(ab_obs)
             ax.add_patch(safe)
+            ax.add_artist(AnnotationBbox(obs_icon, (ox, oy), frameon=False))
  
     # Human positions: circles + icon
     if 'b' in folder_name and human_obstacles.get(scenario_digit):
@@ -208,9 +223,15 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
                 hum_icon, (hx, hy),
                 frameon=False, box_alignment=(0.5, 0.5)
             )
+
+            # Clip both circles at the same rectangle:
+            body.set_clip_path(rect.get_path(), rect.get_transform())
+            safety.set_clip_path(rect.get_path(), rect.get_transform())
+
             ax.add_patch(body)
             ax.add_artist(ab_hum)
             ax.add_patch(safety)
+            ax.add_artist(AnnotationBbox(hum_icon, (hx, hy), frameon=False))
  
     # Collect existing handles and labels
     handles, labels = ax.get_legend_handles_labels()
@@ -224,16 +245,21 @@ def make_plots_for_folder(folder_path, human_img, obstacle_img):
         labels.extend(['Human Path 1', 'Human Path 2', 'Human Path 3'])
 
 
-    ax.set_xlabel("Odometry Y [m]")
-    ax.set_ylabel("Odometry X [m]")
-    ax.set_title("2D Motion: Path from Start to End")
-    ax.set_xlim(6, 0)
-    ax.set_ylim(0, 5)
-    ax.grid(True)
+    ax.set_xlabel("Odometry Y [m]", fontsize=fontsize)
+    ax.set_ylabel("Odometry X [m]", fontsize=fontsize)
+    ax.set_title("2D Motion: Path from Start to End", fontsize=fontsize)
+    ax.tick_params(axis='both', which='major', labelsize=labelsize)
+    ax.set_xlim(6.5, 0)
+    ax.set_ylim(0, 6.5)
+    # ax.grid(True)
     ax.yaxis.set_ticks_position("right")
     ax.yaxis.set_label_position("right")
+    ax.spines['top'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    # ax.spines['right'].set_visible(True)
+    # ax.spines['bottom'].set_visible(True)
     legend_dict = dict(zip(labels, handles))
-    ax.legend(handles=legend_dict.values(), labels=legend_dict.keys(), loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+    ax.legend(handles=legend_dict.values(), labels=legend_dict.keys(), loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2, fontsize=fontsize)
 
  
     fig.savefig(os.path.join(folder_path, f'plot5_2d_motion_{folder_name}.png'),
