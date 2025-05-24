@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __NEX_ROBOT_H__
-#define __NEX_ROBOT_H__
+#ifndef __UTILS_H__
+#define __UTILS_H__
 
 #include <iostream>
 #include <string>
@@ -48,7 +48,7 @@ void print(Args &&...args)
 
 #define CMD(name, cmd, ...) \
     std::vector<uint8_t> { cmd, ##__VA_ARGS__ }
-#define ReturnPayload(payload) (payload + 3)
+#define ReturnPayload(payload) (payload + 3) // Return Payload Excluding the header, command and checksum
 
 #ifdef DEBUG
 #define _DEBUG(x) x
@@ -308,4 +308,4 @@ std::string decimalToHex(unsigned int decimal)
     return ss.str();
 }
 
-#endif // __NEX_ROBOT_H__
+#endif // __UTILS_H__

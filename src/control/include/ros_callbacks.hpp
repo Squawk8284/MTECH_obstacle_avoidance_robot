@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef __ROS_CALLBACKS__
-#define __ROS_CALLBACKS__
+#ifndef __ROS_CALLBACKS_H__
+#define __ROS_CALLBACKS_H__
 
 #include <user_defined_functions.hpp>
 
@@ -26,4 +26,4 @@ void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg)
     CmdLinearVelocity_mps(linear_velocity, angular_velocity);
 }
 
-#endif //__ROS_CALLBACKS__
+#endif //__ROS_CALLBACKS_H__

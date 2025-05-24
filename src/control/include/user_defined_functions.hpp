@@ -9,14 +9,11 @@
  *
  */
 
-#ifndef __USER_DEFINED__FUNCTIONS__
-#define __USER_DEFINED__FUNCTIONS__
+#ifndef __USER_DEFINED__FUNCTIONS_H__
+#define __USER_DEFINED__FUNCTIONS_H__
 
 #include <iostream>
-#include <nex_robot.hpp>
-#include <motor_control_api.hpp>
-#include <power_management_api.hpp>
-#include <inertial_control_api.hpp>
+#include <0xDelta.hpp>
 
 #include <ros/ros.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -222,4 +219,4 @@ bool getYPRG(double *yaw, double *pitch, double *roll, double gravity[3])
     return SUCCESS;
 }
 
-#endif //__USER_DEFINED__FUNCTIONS__
+#endif //__USER_DEFINED__FUNCTIONS_H__

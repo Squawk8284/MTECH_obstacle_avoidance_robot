@@ -9,10 +9,10 @@
  *
  */
 
-#ifndef __POWER_MANAGEMENT_APIS__
-#define __POWER_MANAGEMENT_APIS__
+#ifndef __POWER_MANAGEMENT_APIS_H__
+#define __POWER_MANAGEMENT_APIS_H__
 
-#include <nex_robot.hpp>
+#include <utils.hpp>
 
 // ---------------------------------------------------------------------------
 // Power Control Commands
@@ -55,4 +55,4 @@ bool ReadBatteryVolCurTemp(serial::Serial *s, float *voltage, float *current, fl
     *temperature = buffer[2] * 1.29;
     return SUCCESS;
 }
-#endif //__POWER_MANAGEMENT_APIS__
+#endif //__POWER_MANAGEMENT_APIS_H__

@@ -7,10 +7,10 @@
  *
  * @copyright Copyright (c) 2025
  */
-#ifndef __MOTOR_CONTORL_APIS__
-#define __MOTOR_CONTORL_APIS__
+#ifndef __MOTOR_CONTORL_APIS_H__
+#define __MOTOR_CONTORL_APIS_H__
 
-#include <nex_robot.hpp>
+#include <utils.hpp>
 
 // Convenience macros for safety and mode values.
 #define SAFETY_ON (1)
@@ -863,8 +863,8 @@ bool getEncoderResolutionCountPerWheelRevolution(serial::Serial *s, uint16_t *En
     uint8_t buffer[2];
     if (!executeCommand(s, CMD(GetEncoderResolutionCountPerWheelRevolution, 0x79, 0x07), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
         return FAILURE;
-    *EncoderResolutionCount = (static_cast<uint16_t>(buffer[0]) << 8) | (buffer[1]); 
+    *EncoderResolutionCount = (static_cast<uint16_t>(buffer[0]) << 8) | (buffer[1]);
     return SUCCESS;
 }
 
-#endif // __MOTOR_CONTORL_APIS__
+#endif // __MOTOR_CONTORL_APIS_H__

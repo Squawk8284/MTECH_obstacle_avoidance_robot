@@ -9,10 +9,10 @@
  *
  */
 
-#ifndef __INERTIAL_CONTROL_APIS__
-#define __INERTIAL_CONTROL_APIS__
+#ifndef __INERTIAL_CONTROL_APIS_H__
+#define __INERTIAL_CONTROL_APIS_H__
 
-#include <nex_robot.hpp>
+#include <utils.hpp>
 
 #define BUZZER_ON (0x01)
 #define BUZZER_OFF (0x00)
@@ -274,21 +274,6 @@ bool getZAxisMagnetometer(serial::Serial *s, float *zMag)
     return SUCCESS;
 }
 
-/**
- * @brief Set the Buzzer
- *
- * @param s Pointer to Serial Object
- * @param buzzer BUZZER_ON=0x01 or BUZZER_OFF = 0x00
- * @return true if successful
- * @return false if failed
- */
-bool setBuzzer(serial::Serial *s, uint8_t buzzer)
-{
-    if (!executeCommand(s, CMD(SetBuzzer, 0x30), &buzzer, sizeof(buzzer), ReturnPayload(0), nullptr, 0))
-        return FAILURE;
-    return SUCCESS;
-}
-
 // ---------------------------------------------------------------------------
 // External IMU Sensor Commands - 9DOF Razor IMU
 // ---------------------------------------------------------------------------
@@ -378,4 +363,4 @@ bool getYPRUSB(serial::Serial *s, float *yaw, float *pitch, float *roll)
 
     return SUCCESS;
 }
-#endif //__INERTIAL_CONTROL_APIS__
+#endif //__INERTIAL_CONTROL_APIS_H__
