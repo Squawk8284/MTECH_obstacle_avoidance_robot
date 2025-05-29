@@ -1,5 +1,5 @@
 <launch>
     <arg name="param_file" />
-	<rosparam command="load" file="$(arg param_file)" />
+	<!-- <rosparam command="load" file="$(arg param_file)" /> -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find simulations)/rviz/path.rviz"/>
 </launch>
