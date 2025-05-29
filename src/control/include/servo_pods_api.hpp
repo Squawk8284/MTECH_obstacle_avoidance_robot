@@ -101,7 +101,7 @@ bool getServoPodTiltAngle(serial::Serial *s, uint8_t *TiltAngle)
 
 /**
  * @brief Get the Servo Pod Aux Angle
- * 
+ *
  * @param s Pointer to Serial Object
  * @param AuxAngle Pointer Aux Angle Object
  * @return true if successful
@@ -114,6 +114,26 @@ bool getServoPodAuxAngle(serial::Serial *s, uint8_t *AuxAngle)
         return FAILURE;
 
     *AuxAngle = buffer;
+    return SUCCESS;
+}
+
+/**
+ * @brief Get the Servo Pod Ultrasonic Data
+ * 
+ * @param s Pointer to Serial Object
+ * @param UltrasonicData 16 bit Ultrasonic Data
+ * @return true if successful
+ * @return false if failed 
+ */
+bool getServoPodUltrasonicData(serial::Serial *s, uint16_t *UltrasonicData)
+{
+    uint8_t buffer[2];
+
+    if (!executeCommand(s, CMD(getServoPodUltrasonicData, 0x05, 0x0A), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
+        return FAILURE;
+
+    *UltrasonicData = (static_cast<int16_t>(buffer[0] << 8)) | buffer[1];
+
     return SUCCESS;
 }
 #endif //__SERVO_PODS_API_H__

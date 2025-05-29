@@ -100,7 +100,7 @@ bool getPotentiometerData(serial::Serial *s, int16_t *PotentiometerData)
     if (!executeCommand(s, CMD(getPotentiometerData, 0x05, 0x09), nullptr, 0, ReturnPayload(2), buffer, sizeof(buffer)))
         return FAILURE;
 
-    *PotentiometerData = (static_cast<int16_t>(buffer[1] << 8)) | buffer[0];
+    *PotentiometerData = (static_cast<int16_t>(buffer[0] << 8)) | buffer[1];
 
     return SUCCESS;
 }
