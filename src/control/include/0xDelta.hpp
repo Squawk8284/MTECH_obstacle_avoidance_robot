@@ -18,6 +18,7 @@
 #include <motor_control_api.hpp>
 #include <power_management_api.hpp>
 #include <robotic_arms_control_api.hpp>
+#include <sensor_module_api.hpp>
 #include <miscellaneous_api.hpp>
 
 #endif //__0xDELTA_H__
